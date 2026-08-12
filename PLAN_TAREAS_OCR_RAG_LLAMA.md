@@ -441,10 +441,17 @@ Estado de ejecucion (11 de agosto de 2026):
   - el flujo remoto registro -> upload -> OCR fue validado y persistio el documento,
   - la primera indexacion con `sentence-transformers` reinicio abruptamente la instancia gratuita de Render por consumo de recursos; se incorporo un backend hashing reproducible para completar pgvector sin cargar PyTorch.
 - Pendiente de operacion remota antes de declarar cierre total:
-  - desplegar y verificar `EMBEDDING_BACKEND=hashing` en Render,
-  - ejecutar el flujo remoto login -> upload -> OCR -> indexacion -> consulta,
-  - ejecutar prueba remota de persistencia despues de reiniciar Render,
-  - confirmar que no quedan objetos huerfanos en Supabase Storage ante una falla inducida.
+  - ninguno para el alcance de persistencia documental de la Tarea 7.1.
+- Cierre remoto verificado (11 de agosto de 2026):
+  - `EMBEDDING_BACKEND=hashing`, dimension 384 y proteccion de duplicados quedaron activos en Render,
+  - el flujo registro -> upload -> OCR -> indexacion termino correctamente; la indexacion tardo 2.35 segundos y persistio un chunk,
+  - `match_document_chunks` devolvio el chunk persistido con similitud 1,
+  - despues de reiniciar Render, el documento reaparecio con estado `ready`, `indexed=true` y un chunk,
+  - un segundo usuario obtuvo lista vacia y `404` al intentar eliminar el documento ajeno,
+  - una falla inducida despues de guardar en Storage recibio `409`; Storage permanecio en un objeto y Postgres en una fila, sin huerfanos,
+  - la eliminacion final dejo cero documentos, cero chunks, cero objetos y cero usuarios tecnicos de auditoria,
+  - el despliegue final `5c3206f` quedo `live` con `DOCUMENT_REJECT_DUPLICATES=true`.
+- Estado final: Tarea 7.1 cerrada. La disponibilidad de un LLM para redactar respuestas generativas se valida en las tareas de integracion RAG/Ollama y no condiciona la persistencia ni la recuperacion vectorial verificadas aqui.
 
 ### Tarea 7.2 — Crear servicio frontend para documentos
 
