@@ -8,6 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "test:documents": "node --test tests/documentosApiService.test.mjs",
+    "test:documents:view": "node --test tests/documentosView.test.mjs",
     "test:documents:integration": "node tests/documentosApiService.integration.mjs"
   },
   "dependencies": {

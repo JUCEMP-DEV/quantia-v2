@@ -13,15 +13,17 @@ from app.services.vector_store_service import VectorChunk, VectorStore, create_v
 class RAGService:
     def __init__(
         self,
-        chunk_size: int = 700,
-        overlap: int = 100,
+        chunk_size: int | None = None,
+        overlap: int | None = None,
         llm_service: LLMService | None = None,
         embedding_service: EmbeddingService | None = None,
         vector_store: VectorStore | None = None,
         top_k: int | None = None,
     ):
-        self.chunk_size = max(1, chunk_size)
-        self.overlap = max(0, min(overlap, self.chunk_size - 1))
+        resolved_chunk_size = chunk_size if chunk_size is not None else settings.rag_chunk_size
+        resolved_overlap = overlap if overlap is not None else settings.rag_chunk_overlap
+        self.chunk_size = max(1, resolved_chunk_size)
+        self.overlap = max(0, min(resolved_overlap, self.chunk_size - 1))
         self.llm_service = llm_service or LLMService()
         self.embedding_service = embedding_service or EmbeddingService()
         self.vector_store = vector_store or create_vector_store()
@@ -136,13 +138,13 @@ class RAGService:
 
         context_block = self._format_context_block(matches=matches, context=context)
         return (
-            "Eres un asistente de Quantia que responde usando recuperacion aumentada por contexto.\n"
-            "Instrucciones:\n"
-            "- Responde unicamente con la informacion del contexto.\n"
-            "- Si el contexto no contiene la respuesta, di: No hay informacion suficiente en el documento.\n"
-            "- No inventes datos, precios, fechas ni conclusiones.\n"
-            "- Responde en espanol de forma breve y clara.\n"
-            "- Cuando uses informacion de un fragmento, menciona su identificador entre corchetes.\n\n"
+            "Responde la pregunta usando exclusivamente los fragmentos proporcionados.\n"
+            "Reglas obligatorias:\n"
+            "1. Copia solo la respuesta minima respaldada por el texto; no amplíes siglas ni agregues explicaciones.\n"
+            "2. No inventes datos, marcas, fechas, definiciones ni identificadores.\n"
+            "3. Si la respuesta existe, usa exactamente: <respuesta breve> [<identificador exacto del fragmento>].\n"
+            "4. Si no existe, responde exactamente: No hay informacion suficiente en el documento.\n"
+            "5. La respuesta debe tener como maximo dos oraciones.\n\n"
             f"Contexto recuperado:\n{context_block}\n\n"
             f"Pregunta:\n{query.strip()}\n\n"
             "Respuesta:"
@@ -198,6 +200,7 @@ class RAGService:
             answer = "No se encontro suficiente contexto para responder."
         else:
             answer = self._generate_from_prompt_or_context(prompt=prompt, context=retrieved["context"], query=query)
+            answer = self._ground_answer_citation(answer, retrieved["matches"])
         return {
             **retrieved,
             "prompt": prompt,
@@ -215,6 +218,35 @@ class RAGService:
         if hasattr(self.llm_service, "generate_from_prompt"):
             return self.llm_service.generate_from_prompt(prompt)
         return self.llm_service.generate_answer(context, query)
+
+    def _ground_answer_citation(self, answer: str, matches: list[dict[str, Any]]) -> str:
+        cleaned_answer = re.sub(r"\s*\[[^\]]+\]\s*", " ", str(answer or "")).strip()
+        cleaned_answer = re.sub(r"\s+", " ", cleaned_answer)
+        normalized_answer = self._normalized_tokens(cleaned_answer)
+        refusal_tokens = self._normalized_tokens("No hay informacion suficiente en el documento")
+        if refusal_tokens and len(normalized_answer & refusal_tokens) / len(refusal_tokens) >= 0.8:
+            return "No hay informacion suficiente en el documento."
+        if not cleaned_answer or not matches:
+            return cleaned_answer
+
+        support_tokens = {
+            token
+            for token in normalized_answer
+            if len(token) > 2 or token.isdigit()
+        }
+        supported_match = max(
+            matches,
+            key=lambda match: (
+                len(support_tokens & self._normalized_tokens(str(match.get("content", "")))),
+                float(match.get("score") or 0.0),
+            ),
+        )
+        chunk_id = str(supported_match.get("chunk_id") or "").strip()
+        return f"{cleaned_answer} [{chunk_id}]" if chunk_id else cleaned_answer
+
+    @staticmethod
+    def _normalized_tokens(value: str) -> set[str]:
+        return {token.casefold() for token in re.findall(r"[^\W_]+", value or "", flags=re.UNICODE)}
 
     def _format_context_block(self, matches: list[dict[str, Any]] | None = None, context: str | None = None) -> str:
         if matches:

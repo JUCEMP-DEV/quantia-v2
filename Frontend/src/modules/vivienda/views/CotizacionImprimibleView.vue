@@ -11,6 +11,7 @@
 
         <nav class="topnav">
           <a href="#" @click.prevent="goDashboard">Inicio</a>
+          <a href="#" @click.prevent="goDocuments">Documentos</a>
           <a href="#" @click.prevent="goResumen">Revision</a>
           <a href="#" @click.prevent="goImprimible">Imprimible</a>
         </nav>
@@ -38,6 +39,7 @@
 
           <div class="toolbar-actions">
             <button class="btn btn-secondary" @click="goResumen">Regresar</button>
+            <button class="btn btn-secondary" @click="goDocuments">Consultar documentos</button>
             <button class="btn btn-primary" @click="printDocument">Imprimir</button>
           </div>
         </div>
@@ -448,6 +450,10 @@ function printDocument() {
 
 function goDashboard() {
   router.push("/vivienda/dashboard");
+}
+
+function goDocuments() {
+  router.push("/vivienda/documentos");
 }
 
 function goResumen() {

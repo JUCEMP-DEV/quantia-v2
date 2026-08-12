@@ -12,9 +12,19 @@ class LLMServiceError(RuntimeError):
 
 
 class LLMService:
-    def __init__(self, model: str | None = None, host: str | None = None):
+    def __init__(
+        self,
+        model: str | None = None,
+        host: str | None = None,
+        context_length: int | None = None,
+        max_tokens: int | None = None,
+    ):
         self.model = model or settings.ollama_model
         self.host = (host or settings.ollama_host).rstrip("/")
+        self.context_length = (
+            context_length if context_length is not None else settings.ollama_context_length
+        )
+        self.max_tokens = max_tokens if max_tokens is not None else settings.ollama_max_tokens
         self.timeout = settings.ollama_timeout_seconds
         self.temperature = settings.ollama_temperature
 
@@ -83,7 +93,11 @@ class LLMService:
                     "model": self.model,
                     "prompt": prompt,
                     "stream": False,
-                    "options": {"temperature": self.temperature},
+                    "options": {
+                        "temperature": self.temperature,
+                        "num_ctx": self.context_length,
+                        "num_predict": self.max_tokens,
+                    },
                 },
                 timeout=self.timeout,
             )

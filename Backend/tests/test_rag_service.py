@@ -1,11 +1,22 @@
 ﻿import unittest
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
+from app.core.config import settings
 from app.services.rag_service import RAGService
 from app.services.vector_store_service import LocalVectorStore
 
 
 class RAGServiceTests(unittest.TestCase):
+    def test_default_chunking_uses_configured_values(self):
+        with (
+            patch.object(settings, "rag_chunk_size", 150),
+            patch.object(settings, "rag_chunk_overlap", 30),
+        ):
+            service = RAGService()
+
+        self.assertEqual(service.chunk_size, 150)
+        self.assertEqual(service.overlap, 30)
+
     def test_chunk_text_splits_content_by_tokens(self):
         service = RAGService(chunk_size=4, overlap=1)
         text = "uno dos tres cuatro cinco seis siete ocho nueve diez"
@@ -102,7 +113,8 @@ class RAGServiceTests(unittest.TestCase):
 
         prompt = service.build_prompt("Que incluye?", matches=matches)
 
-        self.assertIn("Responde unicamente con la informacion del contexto", prompt)
+        self.assertIn("usando exclusivamente los fragmentos proporcionados", prompt)
+        self.assertIn("No hay informacion suficiente en el documento", prompt)
         self.assertIn("[doc-1-0] Costo directo de obra", prompt)
         self.assertIn("[doc-1-1] Incluye materiales", prompt)
         self.assertIn("Pregunta:\nQue incluye?", prompt)
@@ -163,7 +175,7 @@ class RAGServiceTests(unittest.TestCase):
         result = service.answer_from_retrieval("uno", document_id="doc-1", top_k=1)
 
         self.assertEqual(len(result["matches"]), 1)
-        self.assertEqual(result["answer"], "Respuesta top k")
+        self.assertEqual(result["answer"], "Respuesta top k [doc-1-0]")
         self.assertIn("[doc-1-0] uno dos", result["prompt"])
     def test_answer_from_retrieval_uses_semantic_context_prompt(self):
         embedding_service = Mock()
@@ -183,10 +195,40 @@ class RAGServiceTests(unittest.TestCase):
 
         result = service.answer_from_retrieval("segundo", document_id="doc-1")
 
-        self.assertEqual(result["answer"], "Respuesta con contexto")
+        self.assertEqual(result["answer"], "Respuesta con contexto [doc-1-1]")
         self.assertEqual(result["context"], "segundo bloque")
         self.assertIn("prompt", result)
         self.assertIn("[doc-1-1] segundo bloque", result["prompt"])
+
+    def test_ground_answer_citation_replaces_invalid_model_identifier(self):
+        service = RAGService()
+        matches = [
+            {
+                "chunk_id": "doc-1-3",
+                "content": "La instalacion hidraulica utilizara tuberia PPR.",
+                "score": 0.8,
+            },
+            {
+                "chunk_id": "doc-1-1",
+                "content": "La estructura utilizara concreto reforzado.",
+                "score": 0.7,
+            },
+        ]
+
+        answer = service._ground_answer_citation("PPR. [identificador-inventado]", matches)
+
+        self.assertEqual(answer, "PPR. [doc-1-3]")
+
+    def test_ground_answer_citation_standardizes_no_information_response(self):
+        service = RAGService()
+        matches = [{"chunk_id": "doc-1-0", "content": "Contexto sin respuesta", "score": 0.5}]
+
+        answer = service._ground_answer_citation(
+            "No hay información suficiente en el documento para determinar la marca.",
+            matches,
+        )
+
+        self.assertEqual(answer, "No hay informacion suficiente en el documento.")
 
 
 if __name__ == "__main__":

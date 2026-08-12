@@ -3,6 +3,7 @@ import unittest
 from pathlib import Path
 
 from app.services.document_service import DocumentService
+from app.services.ocr_service import OCRProcessingError
 
 
 class DocumentServiceTests(unittest.TestCase):
@@ -17,16 +18,14 @@ class DocumentServiceTests(unittest.TestCase):
             self.assertEqual(result["status"], "processed")
             self.assertIn("documento de prueba", result["text"])
 
-    def test_extract_text_from_pdf_without_dependencies(self):
+    def test_invalid_pdf_raises_processing_error_instead_of_returning_error_as_text(self):
         with tempfile.TemporaryDirectory() as tmp_dir:
             temp_path = Path(tmp_dir) / "sample.pdf"
             temp_path.write_bytes(b"%PDF-1.4\n%fake")
 
             service = DocumentService(storage_dir=tmp_dir)
-            result = service.process_file(temp_path)
-
-            self.assertEqual(result["status"], "processed")
-            self.assertTrue("OCR no disponible" in result["text"] or "No se encontró" in result["text"] or "Error" in result["text"])
+            with self.assertRaises(OCRProcessingError):
+                service.process_file(temp_path)
 
 
 if __name__ == "__main__":

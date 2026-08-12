@@ -3,6 +3,8 @@ dist
 .env
 .env.local
 .vercel
+.tools/
+.worktrees/
 
 # Python runtime and test artifacts
 __pycache__/

@@ -24,6 +24,10 @@ class Settings(BaseSettings):
     supabase_key: str = Field(default="", alias="SUPABASE_KEY")
 
     ocr_engine: str = Field(default="tesseract", alias="OCR_ENGINE")
+    tesseract_cmd: Path | None = Field(default=None, alias="TESSERACT_CMD")
+    tesseract_language: str = Field(default="eng", alias="TESSERACT_LANGUAGE")
+    tesseract_data_dir: Path | None = Field(default=None, alias="TESSERACT_DATA_DIR")
+    poppler_path: Path | None = Field(default=None, alias="POPPLER_PATH")
     embedding_backend: str = Field(default="sentence_transformers", alias="EMBEDDING_BACKEND")
     embedding_model: str = Field(default="sentence-transformers/all-MiniLM-L6-v2", alias="EMBEDDING_MODEL")
     embedding_dimension: int = Field(default=384, ge=1, alias="EMBEDDING_DIMENSION")
@@ -60,11 +64,15 @@ class Settings(BaseSettings):
     auth_token_ttl_seconds: int = Field(default=8 * 60 * 60, ge=60, alias="AUTH_TOKEN_TTL_SECONDS")
     vector_store_backend: str = Field(default="local", alias="VECTOR_STORE_BACKEND")
     vector_table_name: str = Field(default="document_chunks", alias="VECTOR_TABLE_NAME")
+    rag_chunk_size: int = Field(default=150, ge=20, alias="RAG_CHUNK_SIZE")
+    rag_chunk_overlap: int = Field(default=30, ge=0, alias="RAG_CHUNK_OVERLAP")
     rag_top_k: int = Field(default=3, alias="RAG_TOP_K")
 
     ollama_host: str = Field(default="http://localhost:11434", alias="OLLAMA_HOST")
     ollama_model: str = Field(default="llama3.1:8b", alias="OLLAMA_MODEL")
-    ollama_timeout_seconds: float = Field(default=30.0, alias="OLLAMA_TIMEOUT_SECONDS")
+    ollama_context_length: int = Field(default=2048, ge=512, alias="OLLAMA_CONTEXT_LENGTH")
+    ollama_max_tokens: int = Field(default=64, ge=1, alias="OLLAMA_MAX_TOKENS")
+    ollama_timeout_seconds: float = Field(default=60.0, ge=1, alias="OLLAMA_TIMEOUT_SECONDS")
     ollama_temperature: float = Field(default=0.2, alias="OLLAMA_TEMPERATURE")
 
     backend_cors_origins: list[str] = Field(
@@ -140,11 +148,11 @@ class Settings(BaseSettings):
             return "llama3.1:8b"
         return value.strip()
 
-    @field_validator("ocr_engine", mode="before")
+    @field_validator("ocr_engine", "tesseract_language", mode="before")
     @classmethod
-    def normalize_ocr_engine(cls, value):  # noqa: ANN001
+    def normalize_ocr_settings(cls, value, info):  # noqa: ANN001
         if not isinstance(value, str) or not value.strip():
-            return "tesseract"
+            return "tesseract" if info.field_name == "ocr_engine" else "eng"
         return value.strip()
 
     @field_validator("embedding_model", mode="before")

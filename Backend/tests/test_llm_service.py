@@ -8,7 +8,11 @@ from app.services.llm_service import LLMService, LLMServiceError
 
 class LLMServiceTests(unittest.TestCase):
     def test_generate_answer_calls_ollama(self):
-        service = LLMService(model="llama3.1:8b", host="http://localhost:11434")
+        service = LLMService(
+            model="llama3.2:3b",
+            host="http://localhost:11434",
+            context_length=2048,
+        )
 
         with patch.object(service, "_call_ollama", return_value="Respuesta desde Ollama") as call:
             answer = service.generate_answer("Contexto de prueba", "Que se puede decir?")
@@ -39,7 +43,11 @@ class LLMServiceTests(unittest.TestCase):
             service.generate_answer("Contexto de prueba", "")
 
     def test_call_ollama_returns_response_text(self):
-        service = LLMService(model="llama3.1:8b", host="http://localhost:11434")
+        service = LLMService(
+            model="llama3.2:3b",
+            host="http://localhost:11434",
+            context_length=2048,
+        )
         response = Mock()
         response.json.return_value = {"response": "Respuesta generada"}
 
@@ -50,10 +58,14 @@ class LLMServiceTests(unittest.TestCase):
         post.assert_called_once_with(
             "http://localhost:11434/api/generate",
             json={
-                "model": "llama3.1:8b",
+                "model": "llama3.2:3b",
                 "prompt": "Prompt",
                 "stream": False,
-                "options": {"temperature": service.temperature},
+                "options": {
+                    "temperature": service.temperature,
+                    "num_ctx": 2048,
+                    "num_predict": service.max_tokens,
+                },
             },
             timeout=service.timeout,
         )
