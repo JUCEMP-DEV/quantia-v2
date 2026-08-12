@@ -24,6 +24,14 @@ from app.schemas.documentos import (
     LLMHealthResponse,
 )
 from app.services.document_repository_service import DocumentRepository, create_document_repository
+from app.services.document_policy_service import (
+    DocumentDuplicateError,
+    DocumentPageLimitError,
+    DocumentQuotaError,
+    cleanup_expired_documents,
+    enforce_upload_policy,
+    inspect_document,
+)
 from app.services.document_service import DocumentService
 from app.services.document_storage_service import DocumentStorage, create_document_storage
 from app.services.llm_service import LLMServiceError
@@ -69,6 +77,7 @@ async def _process_uploaded_document(
     quote_id: str | None = None,
     module_key: str | None = None,
 ) -> DocumentoUploadResponse:
+    _cleanup_user_documents(principal.user_id)
     document_id = str(uuid4())
     original_file_name = Path(file.filename or "documento").name
     normalized_quote_id = _validate_quote_ownership(quote_id, principal)
@@ -86,6 +95,25 @@ async def _process_uploaded_document(
     record_created = False
     try:
         temp_path, size_bytes, checksum = await _stage_upload(file, document_id, extension)
+        try:
+            inspection = inspect_document(temp_path, extension)
+            enforce_upload_policy(
+                repository,
+                user_id=principal.user_id,
+                checksum=checksum,
+                incoming_size=size_bytes,
+            )
+        except DocumentDuplicateError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Documento duplicado. document_id existente: {exc.document_id}",
+            ) from exc
+        except DocumentQuotaError as exc:
+            raise HTTPException(status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail=str(exc)) from exc
+        except DocumentPageLimitError as exc:
+            raise HTTPException(status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, detail=str(exc)) from exc
         stored = storage.save(
             temp_path,
             document_id=document_id,
@@ -106,7 +134,7 @@ async def _process_uploaded_document(
                 "file_checksum": checksum,
                 "status": "uploaded",
                 "ocr_text": "",
-                "ocr_metadata": {},
+                "ocr_metadata": {"source_page_count": inspection.page_count},
                 "embedding_model": settings.embedding_model,
                 "processing_version": PROCESSING_VERSION,
                 "chunk_count": 0,
@@ -124,6 +152,7 @@ async def _process_uploaded_document(
                 "ocr_text": ocr_result.get("text", ""),
                 "ocr_metadata": {
                     **dict(ocr_result.get("metadata") or {}),
+                    "source_page_count": inspection.page_count,
                     "file_name": original_file_name,
                     "original_file_name": original_file_name,
                     "file_checksum": checksum,
@@ -151,6 +180,8 @@ async def _process_uploaded_document(
                 storage.delete(bucket=stored.bucket, object_path=stored.object_path)
             except Exception:
                 pass
+        if "documents_user_checksum_uidx" in str(exc) or "duplicate key" in str(exc).lower():
+            raise HTTPException(status_code=409, detail="El usuario ya cargo un documento con el mismo contenido.") from exc
         raise HTTPException(status_code=500, detail=str(exc)) from exc
     finally:
         if temp_path is not None and temp_path.exists():
@@ -195,6 +226,15 @@ def _get_document_record(document_id: str, principal: DocumentPrincipal) -> dict
     if record is None:
         raise HTTPException(status_code=404, detail="Documento no encontrado")
     return record
+
+
+def _cleanup_user_documents(user_id: str) -> None:
+    cleanup_expired_documents(
+        repository,
+        storage,
+        rag_service.vector_store,
+        user_id=user_id,
+    )
 
 
 def _index_document(record: dict[str, Any], principal: DocumentPrincipal) -> dict[str, Any]:
@@ -347,6 +387,7 @@ async def test_ocr_document(
 
 @router.get("", response_model=DocumentoListResponse)
 async def list_documents(principal: DocumentPrincipal = Depends(get_document_principal)):
+    _cleanup_user_documents(principal.user_id)
     return DocumentoListResponse(documents=[_to_list_item(record) for record in repository.list(principal.user_id)])
 
 

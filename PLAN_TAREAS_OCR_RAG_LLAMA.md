@@ -418,10 +418,26 @@ Estado de ejecucion (11 de agosto de 2026):
   - listado, consulta y eliminacion aislados por usuario,
   - limites de tamaño, extensiones permitidas, checksum y eliminacion de archivo/chunks,
   - pruebas locales de propiedad, ciclo de vida, nombres repetidos, errores de carga y eliminacion.
+- Endurecimiento implementado localmente (11 de agosto de 2026):
+  - validacion de firma o estructura real para PDF, imagenes, JSON y texto UTF-8,
+  - limite configurable de paginas, documentos y bytes acumulados por usuario,
+  - rechazo de duplicados por usuario mediante checksum SHA-256,
+  - migracion adicional con indice unico para evitar duplicados entre workers,
+  - retencion configurable y limpieza oportunista de registros, chunks y archivos,
+  - ventana de retencion independiente para documentos fallidos,
+  - prueba de compensacion cuando falla la creacion del registro despues de guardar el archivo,
+  - 65 pruebas backend aprobadas.
+- Verificado en el entorno remoto (11 de agosto de 2026):
+  - Render responde correctamente en `/health`,
+  - el OpenAPI remoto ya publica ocho rutas `/api/documentos`,
+  - Vercel responde y consume el backend desplegado en Render,
+  - la conexion general de autenticacion entre Render y Supabase responde,
+  - las rutas documentales siguen bloqueadas con `503` porque `AUTH_TOKEN_SECRET` no esta configurado en Render.
 - Pendiente de operacion remota antes de declarar cierre total:
-  - aplicar Backend/supabase/migrations/20260811_001_document_persistence.sql en Supabase,
-  - configurar DOCUMENT_PERSISTENCE_BACKEND=supabase, VECTOR_STORE_BACKEND=supabase y AUTH_TOKEN_SECRET en Render,
+  - aplicar las migraciones `20260811_001_document_persistence.sql` y `20260811_002_document_policies.sql` en Supabase,
+  - configurar y verificar DOCUMENT_PERSISTENCE_BACKEND=supabase, VECTOR_STORE_BACKEND=supabase y AUTH_TOKEN_SECRET en Render,
   - desplegar el backend actualizado,
+  - ejecutar el flujo remoto login -> upload -> OCR -> indexacion -> consulta,
   - ejecutar prueba remota de persistencia despues de reiniciar Render,
   - confirmar que no quedan objetos huerfanos en Supabase Storage ante una falla inducida.
 

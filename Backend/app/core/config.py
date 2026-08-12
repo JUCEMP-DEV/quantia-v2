@@ -35,6 +35,26 @@ class Settings(BaseSettings):
         ge=1024,
         alias="DOCUMENT_MAX_UPLOAD_BYTES",
     )
+    document_max_pages: int = Field(default=100, ge=1, alias="DOCUMENT_MAX_PAGES")
+    document_max_user_documents: int = Field(default=100, ge=1, alias="DOCUMENT_MAX_USER_DOCUMENTS")
+    document_max_user_bytes: int = Field(
+        default=500 * 1024 * 1024,
+        ge=1024,
+        alias="DOCUMENT_MAX_USER_BYTES",
+    )
+    document_reject_duplicates: bool = Field(default=True, alias="DOCUMENT_REJECT_DUPLICATES")
+    document_retention_days: int = Field(default=90, ge=0, alias="DOCUMENT_RETENTION_DAYS")
+    document_failed_retention_hours: int = Field(
+        default=24,
+        ge=0,
+        alias="DOCUMENT_FAILED_RETENTION_HOURS",
+    )
+    document_cleanup_batch_size: int = Field(
+        default=100,
+        ge=1,
+        le=1000,
+        alias="DOCUMENT_CLEANUP_BATCH_SIZE",
+    )
     auth_token_secret: str = Field(default="", alias="AUTH_TOKEN_SECRET")
     auth_token_ttl_seconds: int = Field(default=8 * 60 * 60, ge=60, alias="AUTH_TOKEN_TTL_SECONDS")
     vector_store_backend: str = Field(default="local", alias="VECTOR_STORE_BACKEND")
@@ -91,6 +111,19 @@ class Settings(BaseSettings):
             if normalized in {"0", "false", "no", "off", "release", "prod", "production", ""}:
                 return False
         return False
+
+    @field_validator("document_reject_duplicates", mode="before")
+    @classmethod
+    def parse_document_reject_duplicates(cls, value):  # noqa: ANN001
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, str):
+            normalized = value.strip().lower()
+            if normalized in {"1", "true", "yes", "on"}:
+                return True
+            if normalized in {"0", "false", "no", "off"}:
+                return False
+        return True
 
     @field_validator("ollama_host", mode="before")
     @classmethod

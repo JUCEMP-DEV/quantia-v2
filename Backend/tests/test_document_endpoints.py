@@ -1,9 +1,11 @@
 import tempfile
 import unittest
+from io import BytesIO
 from pathlib import Path
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
+from pypdf import PdfWriter
 
 from app.api.v1.endpoints import documentos
 from app.core.config import settings
@@ -20,7 +22,19 @@ class DocumentEndpointsTests(unittest.TestCase):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.original_secret = settings.auth_token_secret
         self.original_max_bytes = settings.document_max_upload_bytes
+        self.original_max_pages = settings.document_max_pages
+        self.original_max_user_documents = settings.document_max_user_documents
+        self.original_max_user_bytes = settings.document_max_user_bytes
+        self.original_reject_duplicates = settings.document_reject_duplicates
+        self.original_retention_days = settings.document_retention_days
+        self.original_failed_retention_hours = settings.document_failed_retention_hours
         settings.auth_token_secret = "test-secret-with-enough-entropy"
+        settings.document_max_pages = 100
+        settings.document_max_user_documents = 100
+        settings.document_max_user_bytes = 500 * 1024 * 1024
+        settings.document_reject_duplicates = True
+        settings.document_retention_days = 90
+        settings.document_failed_retention_hours = 24
         documentos.repository = LocalDocumentRepository()
         documentos.storage = LocalDocumentStorage(Path(self.temp_dir.name) / "stored")
         documentos.service = DocumentService(storage_dir=Path(self.temp_dir.name) / "staging")
@@ -35,6 +49,12 @@ class DocumentEndpointsTests(unittest.TestCase):
         documentos.rag_service.overlap = self.original_overlap
         settings.auth_token_secret = self.original_secret
         settings.document_max_upload_bytes = self.original_max_bytes
+        settings.document_max_pages = self.original_max_pages
+        settings.document_max_user_documents = self.original_max_user_documents
+        settings.document_max_user_bytes = self.original_max_user_bytes
+        settings.document_reject_duplicates = self.original_reject_duplicates
+        settings.document_retention_days = self.original_retention_days
+        settings.document_failed_retention_hours = self.original_failed_retention_hours
         self.temp_dir.cleanup()
 
     def _headers(self, user_id: str, email: str) -> dict[str, str]:
@@ -191,6 +211,65 @@ class DocumentEndpointsTests(unittest.TestCase):
         settings.document_max_upload_bytes = 3
         oversized = self._upload(content=b"1234")
         self.assertEqual(oversized.status_code, 413)
+
+    def test_upload_rejects_spoofed_or_invalid_content(self):
+        binary_text = self._upload(name="documento.txt", content=b"texto\x00binario")
+        fake_image = self.client.post(
+            "/api/documentos/upload",
+            headers=self.headers,
+            files={"file": ("imagen.png", b"no-es-una-imagen", "image/png")},
+        )
+        invalid_json = self.client.post(
+            "/api/documentos/upload",
+            headers=self.headers,
+            files={"file": ("datos.json", b"{invalido", "application/json")},
+        )
+
+        self.assertEqual(binary_text.status_code, 415)
+        self.assertEqual(fake_image.status_code, 415)
+        self.assertEqual(invalid_json.status_code, 415)
+
+    def test_upload_rejects_pdf_over_page_limit(self):
+        writer = PdfWriter()
+        writer.add_blank_page(width=100, height=100)
+        writer.add_blank_page(width=100, height=100)
+        content = BytesIO()
+        writer.write(content)
+        settings.document_max_pages = 1
+
+        response = self.client.post(
+            "/api/documentos/upload",
+            headers=self.headers,
+            files={"file": ("dos-paginas.pdf", content.getvalue(), "application/pdf")},
+        )
+
+        self.assertEqual(response.status_code, 413)
+        self.assertIn("2 paginas", response.json()["detail"])
+
+    def test_upload_rejects_duplicate_content_for_same_user(self):
+        first = self._upload(name="primero.txt", content=b"contenido duplicado")
+        second = self._upload(name="segundo.txt", content=b"contenido duplicado")
+
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(second.status_code, 409)
+        self.assertIn(first.json()["document_id"], second.json()["detail"])
+
+    def test_upload_enforces_document_count_quota(self):
+        settings.document_max_user_documents = 1
+
+        first = self._upload(name="primero.txt", content=b"contenido uno")
+        second = self._upload(name="segundo.txt", content=b"contenido dos")
+
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(second.status_code, 413)
+
+    def test_upload_removes_stored_object_when_repository_creation_fails(self):
+        stored_root = Path(self.temp_dir.name) / "stored"
+        with patch.object(documentos.repository, "create", side_effect=RuntimeError("falla inducida")):
+            response = self._upload(content=b"contenido temporal")
+
+        self.assertEqual(response.status_code, 500)
+        self.assertEqual([path for path in stored_root.rglob("*") if path.is_file()], [])
 
     def test_upload_validates_quote_and_module_contract(self):
         invalid_quote = self.client.post(

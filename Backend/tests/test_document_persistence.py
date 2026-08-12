@@ -1,5 +1,6 @@
 import tempfile
 import unittest
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import patch
 
@@ -8,8 +9,9 @@ from fastapi import HTTPException
 from app.core.config import settings
 from app.core.document_auth import create_access_token, decode_access_token
 from app.services.document_repository_service import LocalDocumentRepository, create_document_repository
+from app.services.document_policy_service import cleanup_expired_documents
 from app.services.document_storage_service import LocalDocumentStorage, create_document_storage
-from app.services.vector_store_service import LocalVectorStore, create_vector_store
+from app.services.vector_store_service import LocalVectorStore, VectorChunk, create_vector_store
 
 
 class DocumentAuthenticationTests(unittest.TestCase):
@@ -109,6 +111,67 @@ class LocalDocumentPersistenceTests(unittest.TestCase):
             create_vector_store("desconocido")
         self.assertIsInstance(create_document_repository("local"), LocalDocumentRepository)
         self.assertIsInstance(create_vector_store("local"), LocalVectorStore)
+
+    def test_retention_cleanup_removes_record_file_and_chunks(self):
+        original_retention = settings.document_retention_days
+        original_failed_retention = settings.document_failed_retention_hours
+        try:
+            settings.document_retention_days = 30
+            settings.document_failed_retention_hours = 24
+            now = datetime(2026, 8, 11, tzinfo=timezone.utc)
+            old = (now - timedelta(days=31)).isoformat()
+            repository = LocalDocumentRepository()
+            vector_store = LocalVectorStore()
+            with tempfile.TemporaryDirectory() as tmp_dir:
+                root = Path(tmp_dir)
+                source = root / "source.txt"
+                source.write_text("contenido", encoding="utf-8")
+                storage = LocalDocumentStorage(root / "stored")
+                stored = storage.save(
+                    source,
+                    document_id="doc-old",
+                    original_file_name="documento.txt",
+                    content_type="text/plain",
+                )
+                repository.create(
+                    {
+                        **self._record("doc-old"),
+                        "storage_bucket": stored.bucket,
+                        "storage_object_path": stored.object_path,
+                        "size_bytes": 9,
+                        "file_checksum": "a" * 64,
+                        "created_at": old,
+                        "updated_at": old,
+                    }
+                )
+                vector_store.upsert_chunks(
+                    [
+                        VectorChunk(
+                            document_id="doc-old",
+                            chunk_id="doc-old-0",
+                            content="contenido",
+                            embedding=[1.0],
+                            metadata={},
+                        )
+                    ]
+                )
+
+                result = cleanup_expired_documents(
+                    repository,
+                    storage,
+                    vector_store,
+                    user_id="user-1",
+                    now=now,
+                )
+
+                self.assertEqual(result.deleted, 1)
+                self.assertEqual(result.failed, 0)
+                self.assertIsNone(repository.get("doc-old", "user-1"))
+                self.assertEqual(vector_store.list_chunks("doc-old"), [])
+                self.assertFalse((root / "stored" / stored.object_path).exists())
+        finally:
+            settings.document_retention_days = original_retention
+            settings.document_failed_retention_hours = original_failed_retention
 
 
 if __name__ == "__main__":

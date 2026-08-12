@@ -55,6 +55,13 @@ DOCUMENT_PERSISTENCE_BACKEND=supabase
 DOCUMENT_TABLE_NAME=documents
 DOCUMENT_STORAGE_BUCKET=quantia-documents
 DOCUMENT_MAX_UPLOAD_BYTES=20971520
+DOCUMENT_MAX_PAGES=100
+DOCUMENT_MAX_USER_DOCUMENTS=100
+DOCUMENT_MAX_USER_BYTES=524288000
+DOCUMENT_REJECT_DUPLICATES=true
+DOCUMENT_RETENTION_DAYS=90
+DOCUMENT_FAILED_RETENTION_HOURS=24
+DOCUMENT_CLEANUP_BATCH_SIZE=100
 VECTOR_STORE_BACKEND=supabase
 VECTOR_TABLE_NAME=document_chunks
 EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
@@ -69,6 +76,7 @@ Antes de activar el modo `supabase`, aplicar en el proyecto de Supabase:
 
 ```text
 Backend/supabase/migrations/20260811_001_document_persistence.sql
+Backend/supabase/migrations/20260811_002_document_policies.sql
 ```
 
 La migración es idempotente y crea:
@@ -92,3 +100,5 @@ Endpoints documentales protegidos:
 - `GET /api/documentos/llm/health`
 
 La subida acepta opcionalmente `quote_id` y `module_key` como campos multipart. En modo Supabase, `quote_id` se valida contra la cotización del usuario autenticado.
+
+La política de carga valida la firma o estructura real de PDF, imágenes, JSON y texto UTF-8; limita páginas, cantidad y bytes acumulados por usuario; y rechaza contenido duplicado mediante SHA-256. La limpieza de retención se ejecuta de forma oportunista al listar o subir documentos: elimina documentos vencidos, aplica una ventana más corta a estados `failed` y elimina primero chunks y binarios antes del registro. Un valor `0` en las variables de retención desactiva esa ventana.

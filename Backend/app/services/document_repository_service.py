@@ -26,6 +26,19 @@ class DocumentRepository(Protocol):
 
     def list(self, user_id: str) -> list[dict[str, Any]]: ...
 
+    def find_by_checksum(self, user_id: str, checksum: str) -> dict[str, Any] | None: ...
+
+    def usage(self, user_id: str) -> tuple[int, int]: ...
+
+    def list_cleanup_candidates(
+        self,
+        user_id: str,
+        *,
+        retention_before: datetime | None,
+        failed_before: datetime | None,
+        limit: int,
+    ) -> list[dict[str, Any]]: ...
+
     def update(self, document_id: str, user_id: str, values: dict[str, Any]) -> dict[str, Any]: ...
 
     def delete(self, document_id: str, user_id: str) -> dict[str, Any] | None: ...
@@ -58,6 +71,45 @@ class LocalDocumentRepository:
         with self._lock:
             records = [deepcopy(item) for item in self._documents.values() if item.get("user_id") == user_id]
         return sorted(records, key=lambda item: str(item.get("created_at") or ""), reverse=True)
+
+    def find_by_checksum(self, user_id: str, checksum: str) -> dict[str, Any] | None:
+        with self._lock:
+            for item in self._documents.values():
+                if item.get("user_id") == user_id and item.get("file_checksum") == checksum:
+                    return deepcopy(item)
+        return None
+
+    def usage(self, user_id: str) -> tuple[int, int]:
+        with self._lock:
+            records = [item for item in self._documents.values() if item.get("user_id") == user_id]
+            return len(records), sum(int(item.get("size_bytes") or 0) for item in records)
+
+    def list_cleanup_candidates(
+        self,
+        user_id: str,
+        *,
+        retention_before: datetime | None,
+        failed_before: datetime | None,
+        limit: int,
+    ) -> list[dict[str, Any]]:
+        candidates: list[dict[str, Any]] = []
+        with self._lock:
+            for item in self._documents.values():
+                if item.get("user_id") != user_id:
+                    continue
+                created_at = _parse_datetime(item.get("created_at"))
+                updated_at = _parse_datetime(item.get("updated_at"))
+                expired = retention_before is not None and created_at < retention_before
+                failed_expired = (
+                    failed_before is not None
+                    and item.get("status") == "failed"
+                    and updated_at < failed_before
+                )
+                if expired or failed_expired:
+                    candidates.append(deepcopy(item))
+                if len(candidates) >= limit:
+                    break
+        return candidates
 
     def update(self, document_id: str, user_id: str, values: dict[str, Any]) -> dict[str, Any]:
         with self._lock:
@@ -115,6 +167,63 @@ class SupabaseDocumentRepository:
         )
         return [dict(item) for item in (result.data or [])]
 
+    def find_by_checksum(self, user_id: str, checksum: str) -> dict[str, Any] | None:
+        result = (
+            get_supabase_admin_client()
+            .table(self.table_name)
+            .select("*")
+            .eq("user_id", user_id)
+            .eq("file_checksum", checksum)
+            .limit(1)
+            .execute()
+        )
+        return dict(result.data[0]) if result.data else None
+
+    def usage(self, user_id: str) -> tuple[int, int]:
+        result = (
+            get_supabase_admin_client()
+            .table(self.table_name)
+            .select("id,size_bytes")
+            .eq("user_id", user_id)
+            .execute()
+        )
+        records = result.data or []
+        return len(records), sum(int(item.get("size_bytes") or 0) for item in records)
+
+    def list_cleanup_candidates(
+        self,
+        user_id: str,
+        *,
+        retention_before: datetime | None,
+        failed_before: datetime | None,
+        limit: int,
+    ) -> list[dict[str, Any]]:
+        fields = "id,user_id,storage_bucket,storage_object_path,status,created_at,updated_at"
+        records: dict[str, dict[str, Any]] = {}
+        client = get_supabase_admin_client().table(self.table_name)
+        if retention_before is not None:
+            result = (
+                client.select(fields)
+                .eq("user_id", user_id)
+                .lt("created_at", retention_before.isoformat())
+                .limit(limit)
+                .execute()
+            )
+            records.update({str(item["id"]): dict(item) for item in (result.data or [])})
+        if failed_before is not None and len(records) < limit:
+            result = (
+                get_supabase_admin_client()
+                .table(self.table_name)
+                .select(fields)
+                .eq("user_id", user_id)
+                .eq("status", "failed")
+                .lt("updated_at", failed_before.isoformat())
+                .limit(limit - len(records))
+                .execute()
+            )
+            records.update({str(item["id"]): dict(item) for item in (result.data or [])})
+        return list(records.values())[:limit]
+
     def update(self, document_id: str, user_id: str, values: dict[str, Any]) -> dict[str, Any]:
         _validate_status(values.get("status"))
         payload = {**values, "updated_at": _utc_now()}
@@ -157,7 +266,9 @@ def _normalize_record(record: dict[str, Any], *, creating: bool) -> dict[str, An
     now = _utc_now()
     if creating:
         normalized.setdefault("created_at", now)
-    normalized["updated_at"] = now
+        normalized.setdefault("updated_at", now)
+    else:
+        normalized["updated_at"] = now
     return normalized
 
 
@@ -170,3 +281,17 @@ def _validate_status(value: Any) -> None:
 
 def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _parse_datetime(value: Any) -> datetime:
+    if isinstance(value, datetime):
+        parsed = value
+    else:
+        normalized = str(value or "").strip().replace("Z", "+00:00")
+        try:
+            parsed = datetime.fromisoformat(normalized)
+        except ValueError:
+            return datetime.max.replace(tzinfo=timezone.utc)
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
