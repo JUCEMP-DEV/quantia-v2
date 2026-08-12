@@ -64,6 +64,7 @@ DOCUMENT_FAILED_RETENTION_HOURS=24
 DOCUMENT_CLEANUP_BATCH_SIZE=100
 VECTOR_STORE_BACKEND=supabase
 VECTOR_TABLE_NAME=document_chunks
+EMBEDDING_BACKEND=hashing
 EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
 EMBEDDING_DIMENSION=384
 AUTH_TOKEN_SECRET=<secreto-aleatorio-de-al-menos-32-caracteres>
@@ -71,6 +72,8 @@ AUTH_TOKEN_TTL_SECONDS=28800
 ```
 
 La dimensión de `EMBEDDING_DIMENSION` debe coincidir con la columna vectorial creada por la migración y con el modelo configurado. Cambiar el modelo o la dimensión requiere una migración y reindexación.
+
+`EMBEDDING_BACKEND=hashing` genera vectores deterministas y normalizados sin cargar PyTorch, apropiados para instancias de memoria limitada. `sentence_transformers` conserva la búsqueda semántica de mayor calidad para instancias con recursos suficientes. Ambos backends deben usar la dimensión declarada en `EMBEDDING_DIMENSION`; cambiar de backend o modelo requiere reindexar los documentos.
 
 Antes de activar el modo `supabase`, aplicar en el proyecto de Supabase:
 

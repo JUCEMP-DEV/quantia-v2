@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     supabase_key: str = Field(default="", alias="SUPABASE_KEY")
 
     ocr_engine: str = Field(default="tesseract", alias="OCR_ENGINE")
+    embedding_backend: str = Field(default="sentence_transformers", alias="EMBEDDING_BACKEND")
     embedding_model: str = Field(default="sentence-transformers/all-MiniLM-L6-v2", alias="EMBEDDING_MODEL")
     embedding_dimension: int = Field(default=384, ge=1, alias="EMBEDDING_DIMENSION")
     upload_dir: Path = Field(default=BACKEND_DIR / "tmp_documents", alias="UPLOAD_DIR")
@@ -152,6 +153,13 @@ class Settings(BaseSettings):
         if not isinstance(value, str) or not value.strip():
             return "sentence-transformers/all-MiniLM-L6-v2"
         return value.strip()
+
+    @field_validator("embedding_backend", mode="before")
+    @classmethod
+    def normalize_embedding_backend(cls, value):  # noqa: ANN001
+        if not isinstance(value, str) or not value.strip():
+            return "sentence_transformers"
+        return value.strip().lower().replace("-", "_")
 
     @field_validator("vector_store_backend", mode="before")
     @classmethod

@@ -1,6 +1,9 @@
 ﻿from __future__ import annotations
 
+import hashlib
+import re
 from collections.abc import Sequence
+from math import sqrt
 from typing import Any
 
 from app.core.config import settings
@@ -11,9 +14,21 @@ class EmbeddingServiceError(RuntimeError):
 
 
 class EmbeddingService:
-    def __init__(self, model_name: str | None = None, model: Any | None = None):
+    def __init__(
+        self,
+        model_name: str | None = None,
+        model: Any | None = None,
+        backend: str | None = None,
+        dimension: int | None = None,
+    ):
         self.model_name = model_name or settings.embedding_model
         self._model = model
+        self.backend = (backend or settings.embedding_backend).strip().lower().replace("-", "_")
+        self.dimension = dimension or settings.embedding_dimension
+        if self._model is not None:
+            self.backend = "sentence_transformers"
+        if self.backend not in {"sentence_transformers", "hashing"}:
+            raise EmbeddingServiceError(f"EMBEDDING_BACKEND no soportado: {self.backend}")
 
     def embed_text(self, text: str) -> list[float]:
         embeddings = self.embed_texts([text])
@@ -25,6 +40,9 @@ class EmbeddingService:
             return []
         if any(not text for text in clean_texts):
             raise EmbeddingServiceError("No se pueden generar embeddings de textos vacios.")
+
+        if self.backend == "hashing":
+            return [self._hashing_vector(text) for text in clean_texts]
 
         model = self._get_model()
         try:
@@ -38,6 +56,19 @@ class EmbeddingService:
         if len(vectors) != len(clean_texts):
             raise EmbeddingServiceError("El modelo devolvio una cantidad invalida de embeddings.")
         return vectors
+
+    def _hashing_vector(self, text: str) -> list[float]:
+        tokens = re.findall(r"[^\W_]+", text.casefold(), flags=re.UNICODE)
+        features = tokens + [f"{left}::{right}" for left, right in zip(tokens, tokens[1:])]
+        vector = [0.0] * self.dimension
+        for feature in features:
+            digest = hashlib.sha256(feature.encode("utf-8")).digest()
+            index = int.from_bytes(digest[:8], "big") % self.dimension
+            vector[index] += 1.0 if digest[8] & 1 else -1.0
+        norm = sqrt(sum(value * value for value in vector))
+        if norm == 0:
+            raise EmbeddingServiceError("No se pudo generar un embedding para el texto.")
+        return [value / norm for value in vector]
 
     def _get_model(self) -> Any:
         if self._model is not None:

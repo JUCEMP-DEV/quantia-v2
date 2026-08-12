@@ -40,6 +40,20 @@ class EmbeddingServiceTests(unittest.TestCase):
 
         self.assertEqual(service.embed_texts([]), [])
 
+    def test_hashing_backend_is_deterministic_and_normalized(self):
+        service = EmbeddingService(backend="hashing", dimension=16)
+
+        first = service.embed_text("Cimentacion con concreto y acero")
+        second = service.embed_text("Cimentacion con concreto y acero")
+
+        self.assertEqual(first, second)
+        self.assertEqual(len(first), 16)
+        self.assertAlmostEqual(sum(value * value for value in first), 1.0)
+
+    def test_hashing_backend_rejects_unknown_backend(self):
+        with self.assertRaises(EmbeddingServiceError):
+            EmbeddingService(backend="desconocido")
+
 
 if __name__ == "__main__":
     unittest.main()

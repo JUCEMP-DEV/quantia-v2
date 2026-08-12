@@ -426,7 +426,8 @@ Estado de ejecucion (11 de agosto de 2026):
   - retencion configurable y limpieza oportunista de registros, chunks y archivos,
   - ventana de retencion independiente para documentos fallidos,
   - prueba de compensacion cuando falla la creacion del registro despues de guardar el archivo,
-  - 65 pruebas backend aprobadas.
+  - backend de embeddings hashing determinista de 384 dimensiones para instancias con memoria limitada,
+  - 67 pruebas backend aprobadas.
 - Verificado en el entorno remoto (11 de agosto de 2026):
   - Render responde correctamente en `/health`,
   - el OpenAPI remoto ya publica ocho rutas `/api/documentos`,
@@ -435,9 +436,12 @@ Estado de ejecucion (11 de agosto de 2026):
   - el commit `4c6e157` esta activo en Render y Vercel,
   - las variables de persistencia documental y `AUTH_TOKEN_SECRET` ya estan configuradas en Render,
   - las rutas protegidas responden `401` ante un token invalido, confirmando que la autenticacion documental esta activa,
-  - una consulta directa de solo lectura confirma que `documents`, `document_chunks` y el bucket `quantia-documents` aun no existen en Supabase.
+  - las dos migraciones fueron aplicadas en Supabase desde el SQL Editor,
+  - `documents`, `document_chunks` y el bucket privado `quantia-documents` responden correctamente,
+  - el flujo remoto registro -> upload -> OCR fue validado y persistio el documento,
+  - la primera indexacion con `sentence-transformers` reinicio abruptamente la instancia gratuita de Render por consumo de recursos; se incorporo un backend hashing reproducible para completar pgvector sin cargar PyTorch.
 - Pendiente de operacion remota antes de declarar cierre total:
-  - aplicar las migraciones `20260811_001_document_persistence.sql` y `20260811_002_document_policies.sql` en Supabase,
+  - desplegar y verificar `EMBEDDING_BACKEND=hashing` en Render,
   - ejecutar el flujo remoto login -> upload -> OCR -> indexacion -> consulta,
   - ejecutar prueba remota de persistencia despues de reiniciar Render,
   - confirmar que no quedan objetos huerfanos en Supabase Storage ante una falla inducida.
