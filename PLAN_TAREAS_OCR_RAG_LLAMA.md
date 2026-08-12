@@ -432,11 +432,12 @@ Estado de ejecucion (11 de agosto de 2026):
   - el OpenAPI remoto ya publica ocho rutas `/api/documentos`,
   - Vercel responde y consume el backend desplegado en Render,
   - la conexion general de autenticacion entre Render y Supabase responde,
-  - las rutas documentales siguen bloqueadas con `503` porque `AUTH_TOKEN_SECRET` no esta configurado en Render.
+  - el commit `4c6e157` esta activo en Render y Vercel,
+  - las variables de persistencia documental y `AUTH_TOKEN_SECRET` ya estan configuradas en Render,
+  - las rutas protegidas responden `401` ante un token invalido, confirmando que la autenticacion documental esta activa,
+  - una consulta directa de solo lectura confirma que `documents`, `document_chunks` y el bucket `quantia-documents` aun no existen en Supabase.
 - Pendiente de operacion remota antes de declarar cierre total:
   - aplicar las migraciones `20260811_001_document_persistence.sql` y `20260811_002_document_policies.sql` en Supabase,
-  - configurar y verificar DOCUMENT_PERSISTENCE_BACKEND=supabase, VECTOR_STORE_BACKEND=supabase y AUTH_TOKEN_SECRET en Render,
-  - desplegar el backend actualizado,
   - ejecutar el flujo remoto login -> upload -> OCR -> indexacion -> consulta,
   - ejecutar prueba remota de persistencia despues de reiniciar Render,
   - confirmar que no quedan objetos huerfanos en Supabase Storage ante una falla inducida.
