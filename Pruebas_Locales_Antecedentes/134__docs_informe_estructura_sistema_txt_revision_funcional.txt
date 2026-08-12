@@ -1,0 +1,217 @@
+﻿REVISION 134 - docs/informe_estructura_sistema.txt (SEGUN INDICE 01 estructura_explica_quantia_con_dependencias)
+Fecha: 2026-04-14
+Archivo fuente: /docs/informe_estructura_sistema.txt
+Archivo copia txt: docs/revision_metodica_archivos/COPIA_134__docs_informe_estructura_sistema_txt.txt
+Capa: Documentacion
+
+OBJETIVO DEL ARCHIVO
+Documentar estructura, criterios o procedimientos operativos del proyecto.
+
+CODIGO FUENTE ACTUAL (LITERAL)
+0001 INFORME DE ESTRUCTURA DEL SISTEMA
+0002 Proyecto: Quantia (Modulo Vivienda)
+0003 Fecha de actualizacion: 2026-04-14
+0004 Revision: 4 (actualizacion estructural + estado de escalabilidad)
+0005 
+0006 ============================================================
+0007 1) RESUMEN EJECUTIVO
+0008 ============================================================
+0009 El sistema opera con arquitectura de 2 capas:
+0010 - Frontend: Vue 3 + Vite + Pinia + Vue Router.
+0011 - Backend: FastAPI + Supabase.
+0012 
+0013 Conclusiones principales de la revision 4:
+0014 - La inferencia final sigue centralizada en backend via `POST /api/resultados/inferir`.
+0015 - El frontend usa backend tanto para simulacion intermedia (`/api/motor`) como para inferencia final.
+0016 - La raiz ya incluye carpeta `backups/` para respaldos de proyecto.
+0017 - Se detectan 52 archivos vacios en `frontend/src` (placeholders de escalabilidad y estructura base).
+0018 
+0019 ============================================================
+0020 2) ESTRUCTURA DE DIRECTORIOS (ALTO NIVEL)
+0021 ============================================================
+0022 Raiz actual:
+0023 - frontend/
+0024 - backend/
+0025 - database/
+0026 - docs/
+0027 - infra/
+0028 - backups/
+0029 
+0030 Frontend (modulo vivienda activo):
+0031 - frontend/src/modules/vivienda/views
+0032 - frontend/src/modules/vivienda/router
+0033 - frontend/src/modules/vivienda/store
+0034 - frontend/src/modules/vivienda/services
+0035 
+0036 Backend (activo):
+0037 - backend/app/main.py
+0038 - backend/app/api/v1/endpoints
+0039 - backend/app/schemas
+0040 - backend/app/services
+0041 - backend/app/core
+0042 
+0043 Infraestructura:
+0044 - docker-compose.yml
+0045 - infra/nginx/default.conf
+0046 - infra/tunnel/.env.local
+0047 
+0048 ============================================================
+0049 3) FRONTEND (ESTADO ACTUAL VERIFICADO)
+0050 ============================================================
+0051 Piezas vigentes en flujo:
+0052 - `frontend/src/modules/vivienda/store/viviendaStore.js`
+0053   - Orquesta captura por etapas, validaciones y transiciones.
+0054 - `frontend/src/modules/vivienda/views/CotizacionPreliminaresView.vue`
+0055   - Simula preliminares con backend (`motorApiService`).
+0056 - `frontend/src/modules/vivienda/views/CotizacionModuloView.vue`
+0057   - Simula modulos y persiste seleccion en store.
+0058 - `frontend/src/modules/vivienda/views/CotizacionRevisionInferenciaView.vue`
+0059   - Solicita inferencia final y persiste cotizacion.
+0060 - `frontend/src/modules/vivienda/services/resultadosApiService.js`
+0061   - Cliente para `POST /api/resultados/inferir`.
+0062 - `frontend/src/modules/vivienda/services/cotizacionPersistService.js`
+0063   - Persistencia en `POST /api/cotizaciones`.
+0064 
+0065 Piezas de autenticacion:
+0066 - Login, register y perfil llaman endpoints backend de auth.
+0067 - `authStore.js` mantiene usuario y perfil.
+0068 
+0069 Observacion de estructura:
+0070 - Existen capas preparadas para escalar (`components/ui`, `components/layout`, `utils`, `schemas`, `mocks`), pero gran parte aun vacia.
+0071 
+0072 ============================================================
+0073 4) BACKEND (ESTADO ACTUAL VERIFICADO)
+0074 ============================================================
+0075 Entrada:
+0076 - `backend/app/main.py`
+0077   - App FastAPI, CORS, router `/api`, endpoint `/health`.
+0078 
+0079 Routers incluidos:
+0080 - `/auth`
+0081 - `/catalogos`
+0082 - `/motor`
+0083 - `/cotizaciones`
+0084 - `/resultados`
+0085 
+0086 Endpoints implementados y activos:
+0087 - Auth:
+0088   - `POST /api/auth/register`
+0089   - `POST /api/auth/login`
+0090   - `POST /api/auth/profile/update`
+0091 - Catalogos:
+0092   - `GET /api/catalogos/modulos/{module_key}/conceptos`
+0093 - Motor (simulacion intermedia):
+0094   - `POST /api/motor/preliminares/simular`
+0095   - `POST /api/motor/modulos/{module_key}/simular`
+0096 - Cotizaciones:
+0097   - `POST /api/cotizaciones`
+0098   - `GET /api/cotizaciones`
+0099   - `GET /api/cotizaciones/{quote_id}`
+0100 - Resultados:
+0101   - `POST /api/resultados/inferir`
+0102 
+0103 Servicios de negocio:
+0104 - `motor_simulation_service.py`: simulacion por preliminares y modulo.
+0105 - `result_service.py`: inferencia final consolidada, validaciones y salida.
+0106 
+0107 ============================================================
+0108 5) FLUJO END-TO-END VIGENTE
+0109 ============================================================
+0110 1. Usuario inicia sesion o se registra.
+0111 2. Usuario captura etapas: registro -> clasificacion -> modelo espacial -> preliminares -> modulos.
+0112 3. Frontend ejecuta simulaciones intermedias con `/api/motor/...`.
+0113 4. En revision, frontend envia snapshot auditado a `/api/resultados/inferir`.
+0114 5. Backend responde con:
+0115    - `resultadoFinal`
+0116    - `desglose.technicalConcepts`
+0117    - `desglose.officialSummary`
+0118    - `estadoResultado`
+0119    - `metadata`
+0120 6. Frontend confirma revision y guarda snapshot en `/api/cotizaciones`.
+0121 7. Frontend muestra salida imprimible con resultado persistido.
+0122 
+0123 ============================================================
+0124 6) DATOS / TABLAS UTILIZADAS
+0125 ============================================================
+0126 Autenticacion y usuarios:
+0127 - `app_users`
+0128 
+0129 Cotizaciones:
+0130 - `app_cotizaciones`
+0131 
+0132 Catalogos y motor:
+0133 - `catalog_partidas`
+0134 - `catalog_concepts`
+0135 - `catalog_units`
+0136 - `engine_concept_specs`
+0137 - `price_concept_bases`
+0138 
+0139 ============================================================
+0140 7) HALLAZGOS ESTRUCTURALES (REVISION 4)
+0141 ============================================================
+0142 Fortalezas:
+0143 - Inferencia final centralizada en backend.
+0144 - Contratos API claros para auth, catalogos, motor, resultados y cotizaciones.
+0145 - Flujo de vivienda consistente con guards de router y validaciones por etapa.
+0146 
+0147 Hallazgos de mantenimiento:
+0148 - Se detectan 52 archivos vacios en `frontend/src`.
+0149 - Concentracion de logica en vistas grandes del modulo vivienda (alta longitud de archivo).
+0150 - Capas preparadas para escalabilidad aun sin implementacion completa:
+0151   - `components/ui`, `components/layout`, `components/common` (parcial),
+0152   - `services` base (`api.js`, `authService.js`, `catalogService.js`),
+0153   - `stores` base (`appStore.js`, `uiStore.js`),
+0154   - `utils`, `composables`, `schemas`, `mocks`.
+0155 
+0156 ============================================================
+0157 8) RIESGOS Y CONTROLES RECOMENDADOS
+0158 ============================================================
+0159 Riesgos actuales:
+0160 - Escalabilidad limitada si no se activa la capa reusable (UI/layout/utils).
+0161 - Duplicacion potencial de logica al crecer nuevos modulos.
+0162 - Cobertura de pruebas automatizadas no visible en repositorio.
+0163 
+0164 Controles recomendados inmediatos:
+0165 - Definir plan de activacion de componentes base por prioridad (UI, layout, utils).
+0166 - Mover llamadas fetch directas de vistas hacia `services` dedicados.
+0167 - Agregar pruebas de contrato para:
+0168   - `POST /api/motor/preliminares/simular`
+0169   - `POST /api/motor/modulos/{module_key}/simular`
+0170   - `POST /api/resultados/inferir`
+0171   - `POST /api/cotizaciones`
+0172 - Definir smoke tests end-to-end del flujo completo de vivienda.
+0173 
+0174 ============================================================
+0175 9) DOCUMENTACION Y RESPALDO
+0176 ============================================================
+0177 Documentos vigentes en `docs/`:
+0178 - `informe_estructura_sistema.txt` (este archivo)
+0179 - `narrativa_codigo_archivo_por_archivo.txt`
+0180 - `componentes_escalabilidad_vacios.txt`
+0181 
+0182 Respaldo de app:
+0183 - Carpeta de respaldo raiz: `backups/`
+0184 - Ultimo respaldo detectado: `backups/quantia_backup_20260414_111936`
+0185 
+0186 ============================================================
+0187 10) CONCLUSION
+0188 ============================================================
+0189 La arquitectura actual es operativa y estable para el flujo de vivienda, con backend
+0190 como centro de simulacion e inferencia. El siguiente salto de madurez esta en
+0191 activar y consolidar la capa reusable del frontend para escalar modulos y reducir
+0192 deuda tecnica por duplicacion.
+0193 
+
+DESCRIPCION POR BLOQUES / PARTES INTEGRANTES
+- Documento textual de trabajo con bloques de analisis, criterios o instrucciones.
+- Su funcion es soporte documental para arquitectura, flujo o despliegue.
+
+METODOS, REGLAS O PIEZAS FUNCIONALES
+- No se detectan metodos ejecutables explicitos; su comportamiento es declarativo/estructural o depende del framework.
+
+DEPENDENCIAS FUNCIONALES
+- Acoplamiento principalmente estructural por capa y uso del archivo dentro del flujo global.
+
+CONCLUSION DE ESTA REVISION
+El archivo aporta una responsabilidad especifica dentro de su capa y se integra al sistema por medio de sus reglas, metodos y dependencias detectadas.
+

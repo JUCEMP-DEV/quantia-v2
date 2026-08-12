@@ -1,0 +1,30 @@
+PRUEBAS LOCALES - QUANTIA
+
+1. Preparacion
+- Instalar dependencias frontend.
+- Instalar dependencias backend.
+- Configurar .env en frontend y backend.
+
+2. Arranque
+- Levantar backend en 127.0.0.1:8000.
+- Levantar frontend en 127.0.0.1:5173.
+
+3. Flujo base a validar
+- Registro
+- Clasificacion
+- Modelo espacial
+- Preliminares
+- Modulos
+- Revision e inferencia
+- Imprimible
+
+4. Validaciones obligatorias
+- Persistencia al navegar entre vistas.
+- Acumulado visible durante captura.
+- Inference final con resultado no cero cuando aplica.
+- Guardado de cotizacion sin errores.
+
+5. Evidencia
+- Capturas de cada etapa.
+- Totales por escenario.
+- Registro de fecha y version probada.

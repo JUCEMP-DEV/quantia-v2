@@ -1,0 +1,153 @@
+DIAGRAMA DEL FLUJO REAL DEL SISTEMA Y ENDPOINTS PRINCIPALES
+Fecha: 2026-04-16
+
+OBJETIVO
+Documentar el flujo operativo real de Quantia (modulo vivienda) y referenciar de forma explicita los endpoints principales del backend.
+
+PREFIJO REAL DE API
+- Prefijo configurado en backend: /api
+- Definicion: backend/app/core/config.py -> api_v1_prefix = "/api"
+- Montaje en app: backend/app/main.py -> app.include_router(api_router, prefix=settings.api_v1_prefix)
+
+========================================================================
+1) DIAGRAMA DEL FLUJO REAL DEL SISTEMA (OPERACION ACTUAL)
+========================================================================
+
+[Usuario]
+   |
+   v
+[Frontend Vue + Pinia]
+   |
+   +--> (Acceso)
+   |       Login/Register/Profile
+   |       |
+   |       +--> POST /api/auth/register
+   |       +--> POST /api/auth/login
+   |       +--> POST /api/auth/profile/update
+   |
+   +--> (Captura de cotizacion)
+   |       Registro -> Clasificacion/Alcance -> Modelo espacial
+   |       (captura local en store, sin endpoint directo en estas pantallas)
+   |
+   +--> (Preliminares)
+   |       Preview y consolidacion preliminares
+   |       |
+   |       +--> POST /api/motor/preliminares/simular
+   |
+   +--> (Modulos requeridos por alcance)
+   |       Cimentacion / Estructura / Albanileria / Instalaciones /
+   |       Acabados / Complementarios y equipamiento
+   |       |
+   |       +--> POST /api/motor/modulos/{module_key}/simular
+   |
+   +--> (Revision de inferencia)
+   |       Recalculo final en backend
+   |       |
+   |       +--> POST /api/resultados/inferir
+   |
+   +--> (Persistencia de cotizacion)
+   |       Guardado del snapshot + resumen + total
+   |       |
+   |       +--> POST /api/cotizaciones
+   |
+   +--> (Salida final)
+           Imprimible y consulta posterior
+           |
+           +--> GET /api/cotizaciones?user_email=...&limit=...
+           +--> GET /api/cotizaciones/{quote_id}
+
+
+Flujo de soporte:
+- Consulta de catalogo tecnico por modulo:
+  GET /api/catalogos/modulos/{module_key}/conceptos
+- Healthcheck:
+  GET /health
+
+========================================================================
+2) REFERENCIA EXPLICITA A ENDPOINTS PRINCIPALES
+========================================================================
+
+AUTENTICACION Y PERFIL
+1) POST /api/auth/register
+- Archivo backend: backend/app/api/v1/endpoints/auth.py
+- Funcion: register_user
+- Uso real: alta de usuario desde RegisterView.
+
+2) POST /api/auth/login
+- Archivo backend: backend/app/api/v1/endpoints/auth.py
+- Funcion: login_user
+- Uso real: acceso de usuario desde LoginView.
+
+3) POST /api/auth/profile/update
+- Archivo backend: backend/app/api/v1/endpoints/auth.py
+- Funcion: update_profile
+- Uso real: actualizacion de perfil desde ProfileSettingsView.
+
+MOTOR DE SIMULACION
+4) POST /api/motor/preliminares/simular
+- Archivo backend: backend/app/api/v1/endpoints/motor.py
+- Funcion: simular_preliminares
+- Uso real: preview y consolidacion de preliminares antes de entrar a modulos.
+
+5) POST /api/motor/modulos/{module_key}/simular
+- Archivo backend: backend/app/api/v1/endpoints/motor.py
+- Funcion: simular_modulo
+- Uso real: simulacion por modulo durante la captura de partidas activas.
+
+INFERENCIA FINAL
+6) POST /api/resultados/inferir
+- Archivo backend: backend/app/api/v1/endpoints/resultados.py
+- Funcion: inferir_resultado
+- Uso real: generacion del resultado final (technicalConcepts, officialSummary, resultadoFinal).
+
+PERSISTENCIA DE COTIZACIONES
+7) POST /api/cotizaciones
+- Archivo backend: backend/app/api/v1/endpoints/cotizaciones.py
+- Funcion: upsert_cotizacion
+- Uso real: guardado/actualizacion de cotizacion con payload_json y resumen_json.
+
+8) GET /api/cotizaciones
+- Archivo backend: backend/app/api/v1/endpoints/cotizaciones.py
+- Funcion: list_cotizaciones
+- Uso real: listado de cotizaciones por usuario.
+
+9) GET /api/cotizaciones/{quote_id}
+- Archivo backend: backend/app/api/v1/endpoints/cotizaciones.py
+- Funcion: get_cotizacion
+- Uso real: recuperacion puntual de cotizacion guardada.
+
+CATALOGOS TECNICOS
+10) GET /api/catalogos/modulos/{module_key}/conceptos
+- Archivo backend: backend/app/api/v1/endpoints/catalogos.py
+- Funcion: get_catalog_concepts_by_module
+- Uso real: consulta de conceptos activos por modulo y fuente de precio.
+
+SERVICIO DE DISPONIBILIDAD
+11) GET /health
+- Archivo backend: backend/app/main.py
+- Funcion: health
+- Uso real: verificacion de disponibilidad del backend.
+
+========================================================================
+3) FUENTES DE VERIFICACION EN CODIGO
+========================================================================
+- backend/app/main.py
+- backend/app/core/config.py
+- backend/app/api/v1/api.py
+- backend/app/api/v1/endpoints/auth.py
+- backend/app/api/v1/endpoints/motor.py
+- backend/app/api/v1/endpoints/resultados.py
+- backend/app/api/v1/endpoints/cotizaciones.py
+- backend/app/api/v1/endpoints/catalogos.py
+- frontend/src/modules/vivienda/views/LoginView.vue
+- frontend/src/modules/vivienda/views/RegisterView.vue
+- frontend/src/modules/vivienda/views/ProfileSettingsView.vue
+- frontend/src/modules/vivienda/views/CotizacionPreliminaresView.vue
+- frontend/src/modules/vivienda/views/CotizacionModuloView.vue
+- frontend/src/modules/vivienda/views/CotizacionRevisionInferenciaView.vue
+- frontend/src/modules/vivienda/services/motorApiService.js
+- frontend/src/modules/vivienda/services/resultadosApiService.js
+- frontend/src/modules/vivienda/services/cotizacionPersistService.js
+
+CONCLUSION
+El flujo real del sistema ya opera como cadena funcional: autenticacion -> captura -> simulacion preliminares -> simulacion modular -> inferencia final -> persistencia -> salida imprimible. Los endpoints listados arriba son los puntos principales de integracion Frontend-Backend en el estado actual de Quantia.

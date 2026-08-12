@@ -1,0 +1,31 @@
+ESCENARIOS DE PRUEBA - QUANTIA
+Fecha de corte: 2026-04-16
+
+ESCENARIOS OPERATIVOS (PERMITIDOS POR SISTEMA)
+1. Obra nueva - Obra negra
+- tipoIntervencion: obra_nueva
+- alcance: obra_negra
+- activacion: automatica
+
+2. Obra nueva - Obra gris
+- tipoIntervencion: obra_nueva
+- alcance: obra_gris
+- activacion: automatica
+
+3. Obra nueva - Obra completa
+- tipoIntervencion: obra_nueva
+- alcance: obra_completa
+- activacion: automatica
+
+4. Remodelacion por etapas
+- tipoIntervencion: remodelacion
+- alcance: remodelacion_por_etapas
+- activacion: manual por partidas
+
+5. Complementaria por etapas
+- tipoIntervencion: complementaria
+- alcance: complementaria_por_etapas
+- activacion: manual por partidas
+
+ESCENARIO TRANSVERSAL DE CONTROL
+- Regresion de flujo: cambiar alcance y volver a etapas previas para verificar continuidad de datos y no reseteo destructivo.

@@ -1,0 +1,61 @@
+﻿ANEXO TECNICO 05 - VALIDACION EMPIRICA
+Fecha: 2026-04-16
+
+1. OBJETIVO
+Definir un marco formal de validacion empirica alineado al estado actual del sistema y a la evidencia ya disponible.
+
+2. EVIDENCIA TECNICA YA DISPONIBLE
+- Escenarios de prueba documentados.
+- Checklist funcional de ejecucion.
+- Evidencia de pruebas iterativas e integracion tecnica desde chats consolidados.
+
+3. ESCENARIOS BASE DE VALIDACION
+- Obra nueva - obra negra.
+- Obra nueva - obra gris.
+- Obra nueva - obra completa.
+- Remodelacion por etapas.
+- Regresion por cambio de alcance.
+
+4. DIMENSIONES DE EVALUACION
+- Coherencia tecnica de salida.
+- Consistencia inferencial entre reglas y resultado.
+- Claridad explicativa del desglose.
+- Utilidad practica para toma de decision.
+
+5. METRICAS MINIMAS PROPUESTAS
+- Cobertura de escenarios ejecutados (%).
+- Tasa de corrida exitosa sin bloqueo (%).
+- Diferencia relativa contra referencia experta por partida (%).
+- Porcentaje de conceptos con justificacion trazable (%).
+- Puntaje de claridad de salida (escala 1-5).
+
+6. PROTOCOLO DE EJECUCION (FASES)
+Fase 1: Validacion funcional interna
+- Ejecutar los escenarios base.
+- Registrar salida tecnica y oficial.
+
+Fase 2: Validacion semirreal
+- Aplicar casos con datos historicos documentados.
+- Comparar con referencia tecnica de cuantificacion.
+
+Fase 3: Validacion con experto
+- Revisar divergencias por partida/regla.
+- Emitir dictamen de aceptacion o ajuste por regla.
+
+7. CRITERIOS DE CIERRE DE VALIDACION
+- Escenarios base completados al 100%.
+- Sin errores criticos de flujo en corrida completa.
+- Matriz variable-regla-salida con cobertura suficiente para auditoria.
+- Dictamen experto emitido para reglas prioritarias.
+
+8. ESTADO ACTUAL DECLARABLE
+- Viabilidad funcional demostrada: SI.
+- Validacion empirica cerrada: NO (parcial en proceso).
+
+9. EVIDENCIA DOCUMENTAL RELACIONADA
+- 05_flujo_operacion_pruebas/05_escenarios_prueba.txt
+- 05_flujo_operacion_pruebas/06_checklist_pruebas.txt
+- 04_sustentabilidad_academica/04 fundamento_validacion_pruebas_desde_chats.txt
+
+10. TEXTO BREVE SUGERIDO PARA PROTOCOLO
+La validacion del sistema se encuentra en fase parcial: existe evidencia funcional e integracion tecnica, y se establece un protocolo empirico formal por escenarios, metricas y revision experta para cerrar la validacion metodologica.

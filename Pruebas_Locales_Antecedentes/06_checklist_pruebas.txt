@@ -1,0 +1,12 @@
+CHECKLIST DE PRUEBAS - QUANTIA
+
+[ ] Frontend inicia en 5173
+[ ] Backend inicia en 8000
+[ ] Conexion a BD disponible
+[ ] Catalogos cargan correctamente
+[ ] Flujo completo sin saltos indebidos
+[ ] Acumulado no se pierde entre etapas
+[ ] Inferencia final devuelve resultado esperado
+[ ] Cotizacion se guarda correctamente
+[ ] Imprimible muestra resumen final
+[ ] No hay errores criticos en consola o backend

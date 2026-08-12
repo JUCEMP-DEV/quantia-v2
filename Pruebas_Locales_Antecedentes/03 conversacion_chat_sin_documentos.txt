@@ -1,0 +1,65 @@
+﻿BITACORA COMPLETA DE CONVERSACION (SIN DOCUMENTOS EXTERNOS)
+Fecha de consolidacion: 2026-04-16
+Proyecto: Quantia
+
+RESUMEN GENERAL
+- La conversacion se centro en estabilizar el flujo de cotizacion de vivienda, mover el motor de inferencia a backend, depurar estructura, corregir persistencia/acumulado, y preparar despliegue con Docker + tunel unico por Cloudflare.
+- Se realizaron revisiones funcionales, correcciones de store/router/servicios, limpieza de residual legacy, reportes estructurales, y configuracion de despliegue.
+
+BITACORA CRONOLOGICA (ALTO NIVEL)
+1) Se solicitaron tareas iniciales de operacion: activar host, verificar BD, restablecer comunicacion frontend-backend.
+2) Se pidio revisar ortografia/conceptos en frontend/backend y preparar SQL para correcciones en BD.
+3) Se discutio evitar recurrencia del problema y analisis de conveniencia de sistema experto (sin tocar codigo en algunas etapas).
+4) Se elaboraron informes de estructura del sistema en TXT y se actualizaron varias veces segun avances.
+5) Se solicito migrar motor de inferencia de frontend a backend y revisar numerales pendientes.
+6) Se pidio depurar estructura de archivos obsoletos y mover antecedentes para revision posterior.
+7) Se reportaron fallas de flujo entre preliminares/cimentacion y perdida de acumulado al navegar.
+8) Se hicieron multiples reinicios de host para validar cambios iterativos.
+9) Se detecto arquitectura hibrida incompleta (frontend calculando parcial y backend consolidando).
+10) Se genero reporte detallado del flujo, motor, reglas y conexion BD en TXT.
+11) Se ejecuto plan extenso de 20 pasos para estabilizar flujo y migracion backend.
+12) Se corrigio bug critico de reseteo agresivo en store (escenario/alcance).
+13) Se agregaron trazas y se ajusto reset para no borrar modelo espacial en cambios de escenario.
+14) Se validaron builds/compilacion tras cambios (frontend/backend).
+15) Se regeneraron reportes de reglas y motor actualizados.
+16) Se crearon archivos TXT de estructura del sistema en varias iteraciones.
+17) Se definio carpeta destino para reportes no-codigo: ANTECEDENTES QUANTIA.
+18) Se envio estructura completa recursiva hasta ultima ramificacion en TXT.
+19) Se reviso dictamen de estructura y se confirmo que base era defendible, con foco de limpieza en frontend residual.
+20) Se genero lista de limpieza operativa (bloque seguro + bloque con validacion previa).
+21) Se ejecuto limpieza bloque 1 (generados: dist/logs/cache/node_modules segun momento) y validacion bloque 2.
+22) Se movio residual legacy a respaldo (vistas/componentes/servicios no activos).
+23) Se reinstalaron dependencias y se levantaron hosts tras limpieza.
+24) Se confirmo estado de estructura actual en reportes sucesivos.
+25) Se integro documentacion de despliegue y pruebas dentro de docs/despliegue_y_pruebas.
+26) Se verifico que docker-compose inicial estaba vacio y luego se implemento stack Docker.
+27) Se crearon Dockerfile backend/frontend, nginx default.conf, docker-compose funcional y guia remota.
+28) Se reviso configuracion de tunel y se detecto error de token en compose.
+29) Se corrigio manejo seguro del token del tunel (variable de entorno) y se mejoro separacion de secretos.
+30) Se ajusto backend para no depender de .env raiz para secretos de Supabase.
+31) Se movieron secretos a archivos locales ignorados (*.local) y se sanearon templates versionables.
+32) Se instalo cloudflared en el equipo mediante winget.
+33) Se levantaron frontend/backend locales y se valido comunicacion real con Cloudflare Tunnel.
+34) Resultado final: tunel registro conexiones QUIC exitosas (conexion activa con Cloudflare).
+
+CAMBIOS TECNICOS CLAVE LOGRADOS
+- Inferencia final backend-autonoma (no depender de selectedConcepts frontend como fuente oficial final).
+- Ajustes de store para evitar perdida de datos por reset destructivo.
+- Validaciones de integridad de captura/snapshot e inferencia.
+- Limpieza de residual legacy con respaldo controlado.
+- Estandarizacion de reportes tecnicos en carpeta externa de antecedentes.
+- Base de despliegue Docker con gateway Nginx y tunel unico.
+- Endurecimiento de secretos: separar archivos locales y sanitizar env versionables.
+
+INCIDENTES Y RESOLUCIONES DESTACADAS
+- EPERM al correr npm/vite en ciertos momentos: resuelto con ejecucion elevada en comandos puntuales.
+- Falta de Docker en entorno de ejecucion asistente: se trabajo por configuracion de archivos y validaciones alternativas.
+- cloudflared no reconocido inicialmente: instalado por winget y probado con binario instalado.
+
+ESTADO FINAL REPORTADO EN CHAT
+- Frontend y backend levantados para pruebas locales cuando se solicito.
+- Comunicacion con Cloudflare validada en logs (tunnel registrado y conexiones activas).
+- Estructura y documentacion actualizadas en multiples TXT de control.
+
+NOTA
+- Este archivo resume la conversacion del chat y sus decisiones tecnicas, sin anexar contenido de documentos externos.

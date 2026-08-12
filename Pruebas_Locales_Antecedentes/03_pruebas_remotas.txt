@@ -1,0 +1,24 @@
+PRUEBAS REMOTAS - QUANTIA
+
+1. Objetivo
+- Validar funcionamiento cuando frontend o backend no corren en la misma red local.
+
+2. Modalidades sugeridas
+- Tunel temporal para backend local.
+- Despliegue temporal en entorno de pruebas.
+
+3. Validaciones remotas
+- Frontend alcanza API remota.
+- CORS correcto.
+- Autenticacion y sesiones estables.
+- Inferencia y persistencia sin timeout.
+
+4. Riesgos a revisar
+- Latencia alta.
+- Variables de entorno incorrectas.
+- Credenciales expuestas en cliente.
+
+5. Evidencia
+- URL usada para prueba.
+- Escenarios ejecutados.
+- Resultado esperado vs observado.

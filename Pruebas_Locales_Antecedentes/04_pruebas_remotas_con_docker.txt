@@ -1,0 +1,43 @@
+PRUEBAS REMOTAS CON DOCKER - QUANTIA
+
+1) Preparacion
+- Completar backend/.env.docker con credenciales reales.
+- Completar infra/tunnel/.env.local con CLOUDFLARED_TOKEN para el servicio tunnel.
+- Verificar Docker Desktop activo.
+- Liberar puertos locales 80 y 8000/5173 si estan ocupados por ejecucion local previa.
+
+2) Construccion y arranque
+- Ejecutar en raiz del proyecto:
+  docker compose up -d --build
+- Verificar estado:
+  docker compose ps
+
+3) Validaciones locales del stack Docker
+- Frontend por gateway:
+  http://localhost
+- Salud backend por gateway:
+  http://localhost/health
+- API por gateway:
+  http://localhost/api/...
+- Documentacion API:
+  http://localhost/docs
+
+4) Un solo tunel (entrada unica)
+- Abrir tunel al puerto 80 (gateway nginx).
+- Ejemplo cloudflared:
+  cloudflared tunnel --url http://localhost:80
+- Ejemplo ngrok:
+  ngrok http 80
+
+5) Validaciones remotas minimas
+- Carga inicial de interfaz.
+- Navegacion por flujo de cotizacion.
+- Inferencia final sin error de conexion.
+- Guardado de cotizacion.
+- Respuesta de /health y /api desde URL publica del tunel.
+
+6) Cierre
+- Apagar servicios:
+  docker compose down
+- Si se requiere limpieza total de imagenes/volumenes:
+  docker compose down --rmi local --volumes

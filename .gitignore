@@ -1,0 +1,16 @@
+node_modules
+dist
+.env
+.env.local
+.vercel
+
+# Python runtime and test artifacts
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Local document uploads/staging (may contain user data)
+tmp_documents/

@@ -1,0 +1,228 @@
+ENTREGABLE REAL DE CASOS DE VALIDACION POR ESCENARIO
+Fecha de corte: 2026-04-16
+
+ALCANCE DE ESTE ENTREGABLE
+Convertir la validacion en evidencia operativa por caso, con estructura completa y verificable.
+
+ESCENARIOS QUE PERMITE EL SISTEMA HOY (MODULO VIVIENDA)
+- Tipo de intervencion disponibles: obra_nueva, remodelacion, complementaria.
+- Alcances por tipo:
+  - obra_nueva: obra_negra, obra_gris, obra_completa.
+  - remodelacion: remodelacion_por_etapas.
+  - complementaria: complementaria_por_etapas.
+- Total de escenarios operativos actuales: 5.
+- Compatibilidad legacy: obra_blanca se conserva como alias tecnico de obra_completa.
+
+MATRIZ DE ESCENARIOS RECREADOS
+1) obra_nueva + obra_negra
+2) obra_nueva + obra_gris
+3) obra_nueva + obra_completa
+4) remodelacion + remodelacion_por_etapas
+5) complementaria + complementaria_por_etapas
+
+CASO CV-ON-001
+ID o nombre del caso:
+- CV-ON-001 | Obra nueva + Obra negra
+Objetivo del caso:
+- Validar activacion automatica de modulos base estructurales.
+Modulo o regla que se esta validando:
+- Matriz tipo_intervencion -> alcance -> modulos activos (P-003).
+- Validacion de seleccion/alcance de obra nueva.
+Fecha de ejecucion:
+- 2026-04-16
+Responsable de revision:
+- Revision tecnica documental Quantia (equipo + asistente)
+
+Entradas
+- tipoIntervencion: obra_nueva
+- alcance: obra_negra
+- sistemaEstructural: mamposteria_confinada
+- tipoCimentacion: zapata_corrida
+- areaConstruccionM2: 72
+- topografia: plana
+- serviciosInstalaciones: agua=true, energia=true, drenaje=true, gas=false
+
+Salidas esperadas
+- Modulos activos: preliminares, cimentacion, estructura, albanileria.
+- Flujo de captura habilitado hasta albanileria sin forzar instalaciones/acabados.
+- Profundidad preliminar por topografia plana: 0.15 m.
+
+Resultado obtenido
+- El sistema activa exactamente: preliminares, cimentacion, estructura, albanileria.
+- La validacion de alcance para obra_nueva acepta obra_negra sin errores.
+- La logica de topografia plana asigna profundidad 0.15 m.
+
+Analisis de consistencia
+- coincide totalmente.
+- La activacion real de modulos coincide con la matriz definida para obra_negra.
+
+Conclusion del caso
+- Aprobado.
+
+CASO CV-ON-002
+ID o nombre del caso:
+- CV-ON-002 | Obra nueva + Obra gris
+Objetivo del caso:
+- Validar frontera de alcance intermedio con inclusion de instalaciones.
+Modulo o regla que se esta validando:
+- Matriz tipo_intervencion -> alcance -> modulos activos (P-001 y P-003).
+- Regla de topografia con pendiente y requisito de profundidad.
+Fecha de ejecucion:
+- 2026-04-16
+Responsable de revision:
+- Revision tecnica documental Quantia (equipo + asistente)
+
+Entradas
+- tipoIntervencion: obra_nueva
+- alcance: obra_gris
+- sistemaEstructural: concreto_reforzado
+- tipoCimentacion: zapata_aislada
+- areaConstruccionM2: 95
+- topografia: con_pendiente
+- pendienteProfundidadM: 0.30
+- serviciosInstalaciones: agua=true, energia=true, drenaje=true, gas=true
+
+Salidas esperadas
+- Modulos activos: preliminares, cimentacion, estructura, albanileria, instalaciones.
+- Validacion satisfactoria de topografia con pendiente (requiere pendienteProfundidadM > 0).
+- Profundidad preliminar contextual: 0.25 m para con_pendiente.
+
+Resultado obtenido
+- El sistema activa exactamente los 5 modulos esperados para obra_gris.
+- La validacion de preliminares pasa al existir pendienteProfundidadM valida.
+- La logica de simulacion asigna profundidad 0.25 m para con_pendiente.
+
+Analisis de consistencia
+- coincide totalmente.
+- La frontera de obra_gris queda consistente con la regla funcional actual.
+
+Conclusion del caso
+- Aprobado.
+
+CASO CV-ON-003
+ID o nombre del caso:
+- CV-ON-003 | Obra nueva + Obra completa
+Objetivo del caso:
+- Validar activacion total del flujo constructivo de vivienda.
+Modulo o regla que se esta validando:
+- Matriz de alcance completo de obra_nueva.
+- Orden de modulos y cobertura integral del flujo.
+Fecha de ejecucion:
+- 2026-04-16
+Responsable de revision:
+- Revision tecnica documental Quantia (equipo + asistente)
+
+Entradas
+- tipoIntervencion: obra_nueva
+- alcance: obra_completa
+- sistemaEstructural: concreto_reforzado
+- tipoCimentacion: losa_cimentacion
+- areaConstruccionM2: 140
+- topografia: semiplana
+- serviciosInstalaciones: agua=true, energia=true, drenaje=true, gas=true
+
+Salidas esperadas
+- Modulos activos: preliminares, cimentacion, estructura, albanileria, instalaciones, acabados, complementarios_y_equipamiento.
+- Flujo completo habilitado hasta salida tecnica/oficial.
+- Profundidad preliminar por topografia semiplana: 0.20 m.
+
+Resultado obtenido
+- El sistema activa los 7 modulos esperados para obra_completa.
+- La compatibilidad con obra_blanca se mantiene como alias sin alterar salida.
+- La logica de topografia semiplana fija profundidad 0.20 m.
+
+Analisis de consistencia
+- coincide totalmente.
+- Se confirma que alcance completo habilita cobertura integral del flujo.
+
+Conclusion del caso
+- Aprobado.
+
+CASO CV-RM-004
+ID o nombre del caso:
+- CV-RM-004 | Remodelacion por etapas
+Objetivo del caso:
+- Validar seleccion manual por etapas y regla minima de etapa base.
+Modulo o regla que se esta validando:
+- Regla de validacion para remodelacion (al menos una etapa base).
+- Activacion manual por partidas seleccionadas.
+Fecha de ejecucion:
+- 2026-04-16
+Responsable de revision:
+- Revision tecnica documental Quantia (equipo + asistente)
+
+Entradas
+- tipoIntervencion: remodelacion
+- alcance: remodelacion_por_etapas
+- partidasSeleccionadas: preliminares, albanileria, instalaciones
+- sistemaEstructural: mamposteria_confinada
+- tipoCimentacion: zapata_corrida
+- areaConstruccionM2: 68
+- topografia: accidentada
+- serviciosInstalaciones: agua=true, energia=true, drenaje=true, gas=false
+
+Salidas esperadas
+- Validez de seleccion manual por incluir al menos una etapa base (preliminares/albanileria/cimentacion/estructura).
+- Modulos activos iguales a partidasSeleccionadas.
+- Profundidad preliminar por topografia accidentada: 0.25 m.
+
+Resultado obtenido
+- La validacion de remodelacion es satisfactoria porque existe etapa base seleccionada.
+- Modulos activos resultan exactamente: preliminares, albanileria, instalaciones.
+- La topografia accidentada asigna profundidad 0.25 m.
+
+Analisis de consistencia
+- coincide totalmente.
+- La regla de etapa base se cumple y la salida manual es coherente.
+
+Conclusion del caso
+- Aprobado.
+
+CASO CV-CM-005
+ID o nombre del caso:
+- CV-CM-005 | Complementaria por etapas
+Objetivo del caso:
+- Validar seleccion manual en escenario complementario y registro de advertencia funcional v4.
+Modulo o regla que se esta validando:
+- Activacion manual de partidas para complementaria.
+- Emision de warning por reclasificacion pendiente cuando aplique demolicion dominante.
+Fecha de ejecucion:
+- 2026-04-16
+Responsable de revision:
+- Revision tecnica documental Quantia (equipo + asistente)
+
+Entradas
+- tipoIntervencion: complementaria
+- alcance: complementaria_por_etapas
+- partidasSeleccionadas: acabados, complementarios_y_equipamiento
+- sistemaEstructural: mamposteria_confinada
+- tipoCimentacion: zapata_corrida
+- areaConstruccionM2: 40
+- topografia: plana
+- serviciosInstalaciones: agua=true, energia=true, drenaje=true, gas=false
+
+Salidas esperadas
+- Modulos activos iguales a partidasSeleccionadas.
+- Validacion funcional sin error bloqueante.
+- Registro de advertencia de pendiente v4 para reclasificacion automatica si se detecta demolicion dominante.
+
+Resultado obtenido
+- El sistema activa exactamente: acabados, complementarios_y_equipamiento.
+- No se emiten errores de bloqueo por seleccion manual valida.
+- Se conserva warning funcional de pendiente v4 en complementaria.
+
+Analisis de consistencia
+- coincide parcialmente.
+- La activacion coincide; la coincidencia es parcial porque la regla de reclasificacion automatica aun esta marcada como pendiente de definicion v4.
+
+Conclusion del caso
+- Aprobado con observaciones.
+
+CIERRE DEL ENTREGABLE
+- Casos recreados: 5 de 5 escenarios operativos del sistema.
+- Casos aprobados: 4.
+- Casos aprobados con observaciones: 1.
+- Casos no aprobados: 0.
+
+NOTA METODOLOGICA
+Este entregable documenta evidencia funcional real de reglas y activaciones segun comportamiento codificado actual del sistema (frontend + backend). La validacion empirica final contra obra real/criterio experto externo permanece como fase metodologica posterior.
