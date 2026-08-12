@@ -35,6 +35,7 @@ from app.services.document_policy_service import (
 from app.services.document_service import DocumentService
 from app.services.document_storage_service import DocumentStorage, create_document_storage
 from app.services.llm_service import LLMServiceError
+from app.services.ocr_service import OCRDependencyError, OCRServiceError
 from app.services.rag_service import RAGService
 
 
@@ -161,6 +162,18 @@ async def _process_uploaded_document(
             },
         )
         return _to_upload_response(record)
+    except OCRServiceError as exc:
+        if record_created:
+            try:
+                repository.update(
+                    document_id,
+                    principal.user_id,
+                    {"status": "failed", "error_detail": str(exc)[:2000]},
+                )
+            except Exception:
+                pass
+        status_code = status.HTTP_503_SERVICE_UNAVAILABLE if isinstance(exc, OCRDependencyError) else 422
+        raise HTTPException(status_code=status_code, detail=str(exc)) from exc
     except HTTPException:
         if stored is not None and not record_created:
             storage.delete(bucket=stored.bucket, object_path=stored.object_path)

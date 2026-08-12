@@ -531,6 +531,24 @@ Archivos a crear o modificar:
 Entregable:
 - Vista funcional independiente del flujo de cotizacion.
 
+Estado de ejecucion (11 de agosto de 2026):
+- Implementada Frontend/src/modules/vivienda/views/DocumentosView.vue.
+- Registrada la ruta protegida /vivienda/documentos con nombre vivienda-documentos.
+- La vista incluye:
+  - estado de Ollama y del modelo configurado,
+  - carga multipart de PDF, imagen o TXT con procesamiento OCR,
+  - biblioteca de documentos del usuario,
+  - accion individual para indexar,
+  - seleccion de documento y panel basico de pregunta/respuesta.
+- Se muestra metadata documental disponible: nombre, MIME o extension, paginas, chunks, estado y fecha.
+- La vista consume exclusivamente documentosApiService y authStore; no importa viviendaStore ni modifica cantidades, precios o resultadoFinal.
+- Validacion completada:
+  - 6 pruebas unitarias del servicio documental,
+  - 3 pruebas de contrato para ruta, operaciones, metadata e independencia de cotizacion,
+  - build de produccion Vite correcto con 71 modulos transformados.
+- No se agregaron accesos desde Dashboard, revision o imprimible; corresponden a la Tarea 7.4.
+- Los estados detallados por fase, fragmentos recuperados y acciones sugeridas permanecen en la Tarea 7.5.
+
 ### Tarea 7.4 — Agregar puntos de entrada en interfaces existentes
 
 Ubicacion:
@@ -547,6 +565,19 @@ Cambios a realizar:
 
 Entregable:
 - Navegacion clara hacia el modulo documental sin interrumpir el flujo existente.
+
+Estado de ejecucion (11 de agosto de 2026):
+- Dashboard incluye un acceso principal mediante:
+  - enlace Documentos en la navegacion superior,
+  - card independiente "Documentos / Asistente documental",
+  - boton "Abrir asistente documental".
+- Revision de inferencia e imprimible incluyen accesos secundarios "Consultar documentos" y enlace superior.
+- Todos los accesos navegan a /vivienda/documentos sin escribir en viviendaStore ni ejecutar calculos.
+- La ruta documental conserva requiresAuth y no fue agregada a requiresFlow; cotizar e imprimir no dependen del modulo documental.
+- Validacion completada:
+  - 6 pruebas unitarias del servicio documental,
+  - 4 pruebas de contrato de vista, ruta, metadata y navegacion opcional,
+  - build de produccion Vite correcto con 71 modulos transformados.
 
 ### Tarea 7.5 — Conectar vista con flujo OCR → indexar → preguntar
 
@@ -571,6 +602,25 @@ Cambios a realizar:
 
 Entregable:
 - Flujo documental usable de extremo a extremo desde frontend.
+
+Estado de ejecucion (11 de agosto de 2026):
+- DocumentosView implementa el flujo seleccionar -> subir/OCR -> revisar texto -> indexar -> preguntar -> revisar respuesta y evidencia.
+- Se agrego una barra de fases con estados idle, listo, activo y completado para:
+  - subiendo,
+  - procesando OCR,
+  - indexando,
+  - consultando modelo.
+- La respuesta de upload conserva y muestra el texto extraido durante la sesion activa.
+- La respuesta de indexacion conserva y muestra los chunks generados, incluyendo pagina cuando existe en metadata.
+- La consulta permite definir top_k entre 1 y 20 y muestra respuesta, fragmentos recuperados, identificador y similitud.
+- Los errores documentales incluyen sugerencias especificas y reintento contextual para health, listado, upload, indexacion o consulta.
+- Se contemplan autenticacion, tamano, MIME, validacion, OCR vacio, embeddings, Ollama/modelo, documento inexistente, red, backend y timeout.
+- La pregunta permanece deshabilitada hasta que el documento este indexado y Ollama/modelo reporten disponibilidad.
+- Limitacion conocida: el texto OCR completo y los chunks se muestran para operaciones realizadas en la sesion actual; GET /api/documentos no devuelve texto ni contenido de chunks para reconstruir esas vistas despues de recargar.
+- Validacion completada:
+  - 9 pruebas unitarias del servicio documental,
+  - 5 pruebas de contrato de vista, ruta, navegacion, evidencia y recuperacion,
+  - build de produccion Vite correcto con 71 modulos transformados.
 
 ### Tarea 7.6 — Definir integracion futura con cotizacion y calculos
 
@@ -597,6 +647,58 @@ Cambios a realizar:
 Entregable:
 - Lista de campos candidatos y regla de no afectar calculo sin confirmacion.
 
+Estado de ejecucion (11 de agosto de 2026):
+- Auditoria completada sin modificar viviendaStore, result_service.py ni motor_simulation_service.py.
+- No existen imports, llamadas o dependencias de documentos, OCR, RAG, chunks o embeddings en esos tres componentes.
+- La fuente autoritativa del calculo permanece separada:
+  - motor_simulation_service calcula cantidades desde geometria, espacios, preliminares y controles confirmados,
+  - los precios provienen del catalogo y price_concept_bases,
+  - result_service aplica factorAjuste a precios/totales y suma resultadoFinal,
+  - viviendaStore solo recibe resultadoFinal mediante setResultado despues de la inferencia backend.
+
+Campos candidatos a sugerencia documental:
+
+| Campo destino | Tipo de sugerencia | Efecto al aceptar | Regla |
+| --- | --- | --- | --- |
+| datosGeneralesObra.ubicacionProyecto | Ubicacion textual | setDatosGeneralesObra reinicia desde estructura_espacial | Confirmacion individual y advertencia de reinicio |
+| datosGeneralesObra.condicionesEspeciales | Texto descriptivo | Reinicia revision_inferencia | Confirmacion individual |
+| preliminares.observaciones | Nota textual del sitio | No cambia cantidades por si sola | Confirmacion individual |
+| preliminares.alcanceSeleccionado | Valor controlado de alcance preliminar | setPreliminares reinicia modulos | Validar contra catalogo, advertir impacto y confirmar |
+| datosGeneralesObra.notas | Notas tecnicas | Reinicia revision_inferencia | Confirmacion individual |
+| revisionInferencia.observaciones | Nota de revision | Invalida resumen confirmado | Confirmacion individual |
+
+Campos excluidos de aplicacion documental:
+- factorAjuste y factorAjusteAplicado,
+- dimensiones, areas, niveles, alturas y cantidades,
+- unitPrice, total, costoEstimado y resultadoFinal,
+- selectedConceptKeys, selectedConcepts y summaryByPartida,
+- tipoIntervencion, modulosActivos y partidasSeleccionadas,
+- cualquier campo no incluido expresamente en la lista blanca.
+
+Contrato propuesto para una fase futura:
+- El RAG genera propuestas, nunca un patch directo sobre viviendaStore o la cotizacion persistida.
+- Cada propuesta debe incluir:
+  - suggestion_id,
+  - document_id,
+  - target_path incluido en lista blanca,
+  - current_value y proposed_value,
+  - confidence,
+  - evidence con chunk_id, contenido, pagina y score,
+  - status pending, accepted o rejected,
+  - accepted_by y accepted_at cuando corresponda.
+- La interfaz presenta valor actual, valor sugerido, evidencia y efecto de reinicio antes de habilitar Aceptar.
+- Aceptar una propuesta ejecuta el setter publico correspondiente; no se permite mutar el store directamente.
+- Las propuestas se aceptan o rechazan una por una; no se contempla "aplicar todo" para campos con impacto downstream.
+- Despues de aceptar un campo que invalide etapas, el usuario debe revisar los formularios afectados y volver a ejecutar la inferencia.
+- La trazabilidad conserva documento, fragmentos fuente, usuario y fecha de la decision.
+
+Criterios de aceptacion para implementar esta integracion en el futuro:
+- RAG y documentos permanecen fuera de result_service y motor_simulation_service.
+- Ninguna sugerencia modifica costos antes de confirmacion humana y recaptura/recalculo explicito.
+- Backend rechaza target_path fuera de lista blanca y valores que no cumplan tipo, longitud o catalogo.
+- Pruebas demuestran que rechazar o ignorar sugerencias deja el estado y resultadoFinal sin cambios.
+- Pruebas demuestran que aceptar texto usa setters existentes y respeta sus invalidaciones downstream.
+
 ### Tarea 7.7 — Validacion frontend antes de cerrar fase
 
 Ubicacion:
@@ -615,8 +717,78 @@ Cambios a realizar:
 Entregable:
 - Evidencia minima de funcionamiento y lista de limitaciones conocidas.
 
+Estado de ejecucion (11 de agosto de 2026):
+- Frontend validado:
+  - 9 pruebas unitarias de documentos aprobadas,
+  - 5 pruebas de contrato de vista/navegacion aprobadas,
+  - build Vite correcto con 71 modulos transformados.
+- Backend validado:
+  - 67 pruebas unittest aprobadas,
+  - endpoints, autenticacion, persistencia, politicas, OCR, embeddings, RAG, LLM y vector store incluidos.
+- Integracion local real frontend -> FastAPI con backends local/hashing:
+  - health 200,
+  - upload TXT 200,
+  - list 200,
+  - delete 200,
+  - documento eliminado al finalizar,
+  - servidor temporal detenido y logs temporales eliminados.
+- Validacion manual de formatos con archivos temporales:
+  - TXT: correcto; extrajo texto y reporto una pagina,
+  - PDF con texto embebido: correcto; extrajo texto y reporto una pagina,
+  - PNG escaneado: no disponible porque falta el ejecutable Tesseract,
+  - PDF escaneado: no disponible porque falta Poppler.
+- Validacion LLM:
+  - Ollama esta instalado y el daemon local responde correctamente,
+  - `llama3.2:3b` esta descargado y disponible; `llama3.1:8b` fue retirado por su consumo de memoria,
+  - la configuracion local usa `OLLAMA_MODEL=llama3.2:3b` y `OLLAMA_CONTEXT_LENGTH=2048`,
+  - LLMService envia el limite de contexto a Ollama mediante `num_ctx`,
+  - una consulta RAG real respondio correctamente usando el contexto documental,
+  - tambien permanecen cubiertos los estados Ollama apagado y modelo ausente mediante pruebas unitarias/controladas,
+  - el frontend conserva los mensajes para comprobar Ollama y descargar el modelo cuando corresponda.
+
+Limitaciones y hallazgos:
+- Tesseract y Poppler no estan instalados o disponibles en PATH; no se puede certificar OCR de imagen/PDF escaneado en este equipo.
+- La inferencia local depende de la memoria disponible; en este equipo de 8 GB se valido `llama3.2:3b` con contexto 2048. Modelos o contextos mayores pueden agotar la memoria.
+- Defecto detectado: OCRService convierte los errores de Tesseract/Poppler en contenido textual y reporta page_count=1. Una imagen o PDF escaneado puede aparentar OCR completado con el mensaje de error como texto.
+- Antes de declarar soporte de escaneados se debe:
+  - instalar y configurar Tesseract y Poppler,
+  - hacer que OCRService propague un error tipado o texto vacio ante fallas de dependencias,
+  - verificar que el endpoint responda un error recuperable y no persista el mensaje tecnico como contenido OCR,
+  - repetir PNG y PDF escaneado con texto conocido.
+- Estado de cierre: validacion 7.7 ejecutada con exito para TXT, PDF embebido, suites, flujo local y respuesta RAG generativa real; soporte escaneado queda pendiente por las limitaciones anteriores.
+
 ---
 ## Fase 8: Pruebas y validaciÃ³n
+
+### Requisitos y estado de inicio (11 de agosto de 2026)
+
+La Fase 8 puede iniciar, pero su cierre completo requiere preparar el entorno y un corpus documental controlado.
+
+Estado por tarea:
+- Tarea 8.1: parcialmente bloqueada para imagenes y PDF escaneados porque Tesseract y Poppler no estan instalados ni disponibles en PATH. Las pruebas con TXT y PDF con texto embebido pueden comenzar.
+- Tarea 8.2: libre para iniciar; el backend de embeddings hashing y el almacenamiento vectorial ya fueron validados.
+- Tarea 8.3: libre para iniciar; Ollama responde con `llama3.2:3b`, contexto 2048 y una consulta RAG generativa real ya fue comprobada.
+- Tarea 8.4: debe ejecutarse despues de obtener evidencia suficiente de las tareas 8.1, 8.2 y 8.3.
+
+Herramientas requeridas para cerrar la validacion OCR:
+- instalar Tesseract OCR y habilitar el idioma espanol;
+- instalar Poppler y comprobar que `pdftoppm` este disponible en PATH;
+- conservar `pytesseract` y `pdf2image` instalados en el entorno Python;
+- mantener Ollama activo con `llama3.2:3b` y `OLLAMA_CONTEXT_LENGTH=2048` durante las pruebas generativas.
+
+Corpus minimo de documentos reales:
+- un TXT con informacion y respuestas conocidas;
+- un PDF con texto seleccionable;
+- una imagen PNG o JPG escaneada;
+- un PDF escaneado, preferentemente de varias paginas.
+
+Cada documento de prueba debe incluir una ficha de control con:
+- texto o datos esperados;
+- datos importantes que deben recuperarse;
+- entre tres y cinco preguntas con respuestas conocidas;
+- resultado minimo aceptable de OCR y recuperacion.
+
+La evidencia debe registrar documento, formato, resultado OCR, chunks recuperados, pregunta, respuesta esperada, respuesta obtenida, latencia y resultado final.
 
 ### Tarea 8.1 â€” Probar OCR con documentos reales
 
@@ -627,6 +799,27 @@ Cambios a realizar:
 - Validar que los documentos se procesen correctamente.
 - Ajustar el preprocesamiento si el texto estÃ¡ incompleto.
 
+Estado de ejecucion (11 de agosto de 2026):
+- Entorno local preparado:
+  - Tesseract 5.5.3 instalado,
+  - modelo oficial `spa.traineddata` de `tessdata_fast` configurado,
+  - Poppler 25.07 instalado y `pdftoppm` disponible mediante ruta explicita,
+  - rutas locales aisladas en `Backend/.env.local`, sin modificar Render.
+- Se creo un corpus controlado y reproducible con TXT, PDF con texto embebido, PNG escaneado y PDF escaneado de dos paginas, junto con datos y preguntas esperadas.
+- Evidencia registrada en `Backend/tests/evidence/task_8_1_ocr_results.json`:
+  - TXT: similitud 100%, 7/7 datos, 0.61 ms,
+  - PDF con texto embebido: similitud 100%, 7/7 datos, 548.37 ms,
+  - PNG escaneado: similitud 97.99%, 5/5 datos, 828.37 ms,
+  - PDF escaneado: similitud 92.98%, 6/7 coincidencias textuales exactas, 2667.87 ms y todos los valores numericos esenciales recuperados.
+- Limitacion observada: el superindice de `cm²` se reconoce como `cm?` en el PDF escaneado. Una prueba adicional a 300 DPI no lo corrigio y redujo el reconocimiento de otro signo, por lo que se conserva la rasterizacion predeterminada de 200 DPI.
+- Defecto heredado de 7.7 corregido:
+  - las fallas de Tesseract, idioma o Poppler se propagan como errores tipados,
+  - un documento soportado sin texto produce error de procesamiento,
+  - el endpoint responde `503` ante dependencias ausentes,
+  - el registro queda en estado `failed` y el mensaje tecnico no se persiste como `ocr_text`.
+- Pruebas especificas: 30/30 aprobadas para OCR, servicio documental y endpoints.
+- Estado: validacion tecnica completada con corpus controlado; queda pendiente incorporar al menos un documento externo real del usuario para cerrar la evidencia empirica de 8.1. Este pendiente no bloquea el inicio de 8.2.
+
 ### Tarea 8.2 â€” Probar recuperaciÃ³n semÃ¡ntica
 
 UbicaciÃ³n:
@@ -635,6 +828,22 @@ UbicaciÃ³n:
 Cambios a realizar:
 - Verificar que las preguntas recuperen los chunks correctos.
 - Ajustar tamaÃ±o de chunks y nÃºmero de resultados.
+
+Estado de ejecucion (11 de agosto de 2026):
+- Se creo un documento controlado de 514 palabras con siete secciones, cifras y responsables distractores, mas ocho preguntas con respuesta conocida.
+- Se evaluaron 12 combinaciones de `chunk_size` 80/150/250/700 y `top_k` 1/2/3 usando embeddings hashing de 384 dimensiones.
+- Las configuraciones de 700 palabras generaron un solo chunk y se excluyeron de la recomendacion porque no miden recuperacion selectiva.
+- Configuracion seleccionada: `RAG_CHUNK_SIZE=150`, `RAG_CHUNK_OVERLAP=30` y `RAG_TOP_K=3`.
+- Resultado seleccionado:
+  - recall 100% para 8/8 preguntas,
+  - mean reciprocal rank 0.9167,
+  - cinco chunks indexados,
+  - promedio de 450 palabras recuperadas por consulta,
+  - latencia media local de recuperacion 0.356 ms.
+- Los valores quedaron centralizados como configuracion de entorno y RAGService ya no depende de los valores fijos 700/100.
+- Evidencia completa: `Backend/tests/evidence/task_8_2_rag_results.json`.
+- Pruebas especificas de RAG, embeddings y vector store: 22/22 aprobadas.
+- Estado: Tarea 8.2 completada para el backend hashing/local. La comprobacion de respuestas generativas con estos fragmentos corresponde a 8.3.
 
 ### Tarea 8.3 â€” Probar respuestas del modelo
 
@@ -645,14 +854,64 @@ Cambios a realizar:
 - Validar que las respuestas sean Ãºtiles y coherentes.
 - Ajustar el prompt si la respuesta es demasiado vaga o inventa informaciÃ³n.
 
+Estado de ejecucion (11 de agosto de 2026):
+- Primera linea base con timeout 30 segundos:
+  - 4/10 consultas completadas,
+  - seis timeouts mientras Ollama continuaba generando en CPU,
+  - una respuesta amplio incorrectamente una sigla y varias citas usaron identificadores inexistentes.
+- Ajustes aplicados:
+  - `OLLAMA_MAX_TOKENS=64` enviado como `num_predict`,
+  - `OLLAMA_TIMEOUT_SECONDS=60`, compatible con el timeout frontend de 120 segundos,
+  - temperatura local 0 para respuestas factuales,
+  - prompt extractivo con rechazo explicito cuando no existe respuesta,
+  - normalizacion backend de rechazos y seleccion determinista de una cita valida entre los chunks recuperados.
+- Validacion final con `llama3.2:3b`, contexto 2048 y diez consultas reales:
+  - 8/8 preguntas con respuesta conocida aprobadas,
+  - 2/2 preguntas sin respuesta rechazadas correctamente,
+  - 8/8 respuestas documentales con identificador de chunk valido,
+  - 10/10 solicitudes completadas sin timeout,
+  - latencia media 31.96 segundos y maxima 47.20 segundos en CPU.
+- Evidencia completa: `Backend/tests/evidence/task_8_3_llm_results.json`.
+- Limitacion conocida: la inferencia local es funcional pero lenta en este equipo de 8 GB; la interfaz debe conservar el indicador de procesamiento y el timeout de 120 segundos.
+- Estado: Tarea 8.3 completada para el modelo y hardware locales configurados.
+
 ### Tarea 8.4 â€” Verificar integraciÃ³n total
 
 UbicaciÃ³n:
 - Backend/app/api/v1/endpoints/documentos.py
-- Frontend/src/services/api.js
+- Frontend/src/modules/vivienda/services/documentosApiService.js
 
 Cambios a realizar:
 - Validar el flujo completo: subir documento â†’ procesar â†’ indexar â†’ consultar.
+
+Estado de ejecucion (12 de agosto de 2026):
+- Integracion ejecutada localmente desde el cliente real `documentosApiService.js` contra FastAPI y Ollama, sin requerir despliegue en Vercel o Render.
+- Configuracion de prueba: persistencia local, vector store local, embeddings hashing y `llama3.2:3b`.
+- Flujo validado:
+  - health de Ollama/modelo 200,
+  - upload y OCR de documento controlado 200,
+  - procesamiento e indexacion 200 con cinco chunks,
+  - pregunta documental 200 con respuesta `$250,000.00 MXN` y cita de chunk valida,
+  - listado del documento en estado `ready`,
+  - eliminacion 200,
+  - listado final sin el documento temporal.
+- La corrida completa aprobada tardo 27.3 segundos y recupero tres matches.
+- Una primera corrida recibio un `503` transitorio durante la pregunta; el mecanismo `finally` elimino el documento y verifico la limpieza. El reintento inmediato completo todas las operaciones.
+- Evidencia: `Backend/tests/evidence/task_8_4_integration_results.json`.
+- Validacion final del repositorio:
+  - backend 75/75 pruebas aprobadas,
+  - servicio documental frontend 9/9 pruebas aprobadas,
+  - vista documental frontend 5/5 pruebas aprobadas,
+  - build Vite correcto con 71 modulos transformados.
+- Estado: Tarea 8.4 completada en entorno local. La certificacion remota en Render/Vercel se mantiene como paso posterior al cierre funcional local.
+
+### Estado general de la Fase 8
+
+- Tarea 8.1: validacion tecnica controlada completada; pendiente una muestra externa real aportada por el usuario.
+- Tarea 8.2: completada.
+- Tarea 8.3: completada.
+- Tarea 8.4: completada localmente.
+- Para declarar la Fase 8 totalmente cerrada solo falta incorporar y registrar al menos un documento externo real. El despliegue remoto no es requisito para este cierre local.
 
 ---
 
@@ -660,7 +919,7 @@ Cambios a realizar:
 
 Al concluir el plan se deberÃ¡ contar con:
 
-- un mÃ³dulo backend para OCR + RAG + Llama 3.1 8B,
+- un mÃ³dulo backend para OCR + RAG + Llama 3.2 3B,
 - endpoints de API listos para consumo,
 - una interfaz simple en frontend para subir documentos y consultar respuestas,
 - evidencia de funcionamiento con documentos reales.

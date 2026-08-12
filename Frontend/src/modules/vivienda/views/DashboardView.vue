@@ -12,6 +12,7 @@
 
         <nav class="topnav">
           <a href="#" @click.prevent="goDashboard">Inicio</a>
+          <a href="#" @click.prevent="goDocuments">Documentos</a>
           <a href="#" @click.prevent="goProfile">Perfil</a>
           <a href="#" @click.prevent="goRegister">Crear cuenta</a>
         </nav>
@@ -133,6 +134,20 @@
             </div>
           </div>
         </article>
+
+        <article class="main-card document-access-card">
+          <div class="document-access-copy">
+            <p class="card-tag">Herramienta independiente</p>
+            <h2>Documentos / Asistente documental</h2>
+            <p>
+              Procesa archivos con OCR, prepara su contenido para busqueda semantica y realiza
+              consultas sin modificar cantidades, precios ni resultados de la cotizacion.
+            </p>
+          </div>
+          <button class="btn btn-primary" type="button" @click="goDocuments">
+            Abrir asistente documental
+          </button>
+        </article>
       </section>
     </main>
   </div>
@@ -181,6 +196,10 @@ const nextStepLabel = computed(() => {
 
 function goDashboard() {
   router.push("/vivienda/dashboard");
+}
+
+function goDocuments() {
+  router.push("/vivienda/documentos");
 }
 
 function goLogin() {
@@ -495,6 +514,31 @@ function continueFlow() {
   gap: 14px;
 }
 
+.document-access-card {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28px;
+  background:
+    linear-gradient(120deg, rgba(48, 196, 255, 0.15), rgba(111, 74, 244, 0.2)),
+    rgba(255, 255, 255, 0.09);
+}
+
+.document-access-copy {
+  max-width: 850px;
+}
+
+.document-access-copy h2 {
+  margin: 0 0 9px;
+}
+
+.document-access-copy p:last-child {
+  margin: 0;
+  color: rgba(245, 245, 255, 0.82);
+  line-height: 1.55;
+}
+
 .concept-box {
   padding: 16px;
   border-radius: 18px;
@@ -581,6 +625,11 @@ function continueFlow() {
   }
 
   .quick-actions {
+    flex-direction: column;
+  }
+
+  .document-access-card {
+    align-items: stretch;
     flex-direction: column;
   }
 

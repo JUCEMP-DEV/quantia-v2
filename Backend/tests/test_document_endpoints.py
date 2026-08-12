@@ -14,6 +14,7 @@ from app.main import app
 from app.services.document_repository_service import LocalDocumentRepository
 from app.services.document_service import DocumentService
 from app.services.document_storage_service import LocalDocumentStorage
+from app.services.ocr_service import OCRDependencyError
 from app.services.vector_store_service import LocalVectorStore
 
 
@@ -112,6 +113,22 @@ class DocumentEndpointsTests(unittest.TestCase):
         self.assertIn("Linea OCR", payload["text"])
         self.assertEqual(payload["metadata"]["original_file_name"], "sample.txt")
 
+    def test_upload_reports_ocr_dependency_error_without_persisting_it_as_text(self):
+        with patch.object(
+            documentos.service,
+            "process_file",
+            side_effect=OCRDependencyError("Tesseract no esta disponible."),
+        ):
+            response = self._upload(name="sample.txt", content=b"contenido OCR")
+
+        self.assertEqual(response.status_code, 503)
+        self.assertIn("Tesseract no esta disponible", response.json()["detail"])
+        records = documentos.repository.list("user-1")
+        self.assertEqual(len(records), 1)
+        self.assertEqual(records[0]["status"], "failed")
+        self.assertEqual(records[0]["ocr_text"], "")
+        self.assertIn("Tesseract no esta disponible", records[0]["error_detail"])
+
     def test_list_documents_returns_only_owner_documents(self):
         upload = self._upload().json()
 
@@ -168,9 +185,12 @@ class DocumentEndpointsTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         payload = response.json()
-        self.assertEqual(payload["answer"], "Respuesta RAG")
         self.assertEqual(payload["document_id"], upload["document_id"])
         self.assertEqual(len(payload["matches"]), 1)
+        self.assertEqual(
+            payload["answer"],
+            f"Respuesta RAG [{payload['matches'][0]['chunk_id']}]",
+        )
 
     def test_other_user_cannot_access_document(self):
         upload = self._upload().json()

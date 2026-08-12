@@ -85,6 +85,53 @@ test("clasifica indisponibilidad de Ollama", async () => {
   );
 });
 
+test("clasifica OCR sin texto utilizable", async () => {
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ detail: "El OCR no produjo chunks ni texto utilizable" }), {
+      status: 422,
+      headers: { "Content-Type": "application/json" },
+    });
+
+  await assert.rejects(
+    subirDocumento({ file: new Blob(["imagen"]), accessToken: "token-prueba" }),
+    (error) => error instanceof DocumentApiError && error.code === "document_ocr_empty"
+  );
+});
+
+test("clasifica embeddings no disponibles", async () => {
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ detail: "El servicio de embeddings no esta disponible" }), {
+      status: 503,
+      headers: { "Content-Type": "application/json" },
+    });
+
+  await assert.rejects(
+    preguntarDocumento({
+      documentId: "doc-1",
+      query: "consulta",
+      accessToken: "token-prueba",
+    }),
+    (error) => error instanceof DocumentApiError && error.code === "document_embeddings_unavailable"
+  );
+});
+
+test("clasifica documento inexistente", async () => {
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ detail: "Documento no encontrado" }), {
+      status: 404,
+      headers: { "Content-Type": "application/json" },
+    });
+
+  await assert.rejects(
+    preguntarDocumento({
+      documentId: "doc-inexistente",
+      query: "consulta",
+      accessToken: "token-prueba",
+    }),
+    (error) => error instanceof DocumentApiError && error.code === "document_not_found"
+  );
+});
+
 test("distingue timeout de cancelacion externa", async () => {
   globalThis.fetch = (_url, options) =>
     new Promise((_resolve, reject) => {

@@ -9,6 +9,7 @@
         <div class="brand-wrap"><LogoQuantia /></div>
         <nav class="topnav">
           <a href="#" @click.prevent="goDashboard">Inicio</a>
+          <a href="#" @click.prevent="goDocuments">Documentos</a>
           <a href="#" @click.prevent="goBack">Anterior</a>
           <a href="#" @click.prevent>Ayuda</a>
         </nav>
@@ -105,6 +106,7 @@
 
           <div class="actions">
             <button type="button" class="btn btn-secondary" @click="goBack">Regresar</button>
+            <button type="button" class="btn btn-secondary" @click="goDocuments">Consultar documentos</button>
             <button type="button" class="btn btn-primary" :disabled="loadingPreview" @click="handleContinue">Confirmar y continuar</button>
           </div>
         </article>
@@ -290,6 +292,10 @@ async function handleContinue() {
 
 function goDashboard() {
   router.push("/vivienda/dashboard");
+}
+
+function goDocuments() {
+  router.push("/vivienda/documentos");
 }
 
 function goBack() {

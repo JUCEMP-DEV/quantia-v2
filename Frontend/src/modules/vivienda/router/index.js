@@ -2,6 +2,7 @@ import LandingView from "@/modules/vivienda/views/LandingView.vue";
 import LoginView from "@/modules/vivienda/views/LoginView.vue";
 import RegisterView from "@/modules/vivienda/views/RegisterView.vue";
 import DashboardView from "@/modules/vivienda/views/DashboardView.vue";
+import DocumentosView from "@/modules/vivienda/views/DocumentosView.vue";
 import ProfileSettingsView from "@/modules/vivienda/views/ProfileSettingsView.vue";
 import CotizacionRegistroView from "@/modules/vivienda/views/CotizacionRegistroView.vue";
 import CotizacionClasificacionView from "@/modules/vivienda/views/CotizacionClasificacionView.vue";
@@ -59,6 +60,16 @@ const viviendaRoutes = [
     component: DashboardView,
     meta: {
       title: "Dashboard | Quantia Vivienda",
+      step: 2,
+      requiresAuth: true,
+    },
+  },
+  {
+    path: "/vivienda/documentos",
+    name: "vivienda-documentos",
+    component: DocumentosView,
+    meta: {
+      title: "Documentos | Quantia Vivienda",
       step: 2,
       requiresAuth: true,
     },
